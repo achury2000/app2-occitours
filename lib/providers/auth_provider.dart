@@ -2,10 +2,12 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
-import '../data/mock_users.dart';
+import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
-  AuthProvider(){
+  final ApiService _apiService = ApiService();
+
+  AuthProvider() {
     _loadFromPrefs();
   }
   User? _user;
@@ -24,15 +26,33 @@ class AuthProvider with ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      // simulate API
-      await Future.delayed(Duration(seconds: 1));
-      final found = mockUsers.firstWhere((u) => u.email == email, orElse: () => throw 'User not found');
-      _user = found;
-      _token = 'mock-token-${found.id}';
-      // persist token
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('token', _token!);
-      await prefs.setString('userId', found.id);
+      // Llamar al backend real
+      final response = await _apiService.login(email, password);
+
+      if (response['success'] == true) {
+        _token = response['token'];
+        _apiService.setToken(_token);
+
+        final userData = response['usuario'];
+        _user = User(
+          id: userData['id'].toString(),
+          name: '${userData['nombre']} ${userData['apellido']}',
+          email: userData['email'],
+          role: userData['rol'],
+          phone: '', // No viene en la respuesta del login
+          address: '',
+        );
+
+        // Persistir token y datos
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', _token!);
+        await prefs.setString('userId', _user!.id);
+        await prefs.setString('userName', _user!.name);
+        await prefs.setString('userEmail', _user!.email);
+        await prefs.setString('userRole', _user!.role);
+      } else {
+        _error = response['message'] ?? 'Error al iniciar sesión';
+      }
     } catch (e) {
       _error = e.toString();
     } finally {
@@ -41,33 +61,80 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>> register({
+    required String nombre,
+    required String apellido,
+    required String cedula,
+    required String email,
+    required String password,
+    String? telefono,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _apiService.register(
+        nombre: nombre,
+        apellido: apellido,
+        cedula: cedula,
+        email: email,
+        password: password,
+        telefono: telefono,
+      );
+
+      _loading = false;
+      notifyListeners();
+      return response;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      throw e;
+    }
+  }
+
   Future<void> logout() async {
+    await _apiService.logout();
     _token = null;
     _user = null;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('token');
-    await prefs.remove('userId');
+    await prefs.clear();
     notifyListeners();
   }
 
   Future<void> verifySession() async {
     _loading = true;
     notifyListeners();
-    await Future.delayed(Duration(milliseconds: 600));
+
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('token');
-    final userId = prefs.getString('userId');
-    if (storedToken != null && userId != null) {
+
+    if (storedToken != null) {
       try {
-        _user = mockUsers.firstWhere((u) => u.id == userId);
         _token = storedToken;
-        // refresh persisted role if admin changed it via users provider
-        final roleOverride = prefs.getString('userRole_' + userId);
-        if (roleOverride != null) {
-          _user = User(id: _user!.id, name: _user!.name, email: _user!.email, role: roleOverride, phone: _user!.phone, address: _user!.address);
+        _apiService.setToken(storedToken);
+
+        // Verificar si el token sigue válido obteniendo el perfil
+        final response = await _apiService.getProfile();
+
+        if (response['success'] == true) {
+          final userData = response['usuario'];
+          _user = User(
+            id: userData['id'].toString(),
+            name: '${userData['nombre']} ${userData['apellido']}',
+            email: userData['email'],
+            role: userData['rol'],
+            phone: '',
+            address: '',
+          );
         }
-      } catch (_) {}
+      } catch (e) {
+        // Token inválido o expirado, limpiar
+        await logout();
+      }
     }
+
     _loading = false;
     notifyListeners();
   }
@@ -76,21 +143,27 @@ class AuthProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('token');
     final userId = prefs.getString('userId');
+    final userName = prefs.getString('userName');
+    final userEmail = prefs.getString('userEmail');
+    final userRole = prefs.getString('userRole');
+
     if (storedToken != null && userId != null) {
-      try {
-        _user = mockUsers.firstWhere((u) => u.id == userId);
-        final roleOverride = prefs.getString('userRole_' + userId);
-        if (roleOverride != null) {
-          _user = User(id: _user!.id, name: _user!.name, email: _user!.email, role: roleOverride, phone: _user!.phone, address: _user!.address);
-        }
-        _token = storedToken;
-        notifyListeners();
-      } catch (_) {}
+      _token = storedToken;
+      _apiService.setToken(storedToken);
+      _user = User(
+        id: userId,
+        name: userName ?? '',
+        email: userEmail ?? '',
+        role: userRole ?? '',
+        phone: '',
+        address: '',
+      );
+      notifyListeners();
     }
   }
 
-  bool hasAnyRole(List<String> roles){
+  bool hasAnyRole(List<String> roles) {
     final r = (_user?.role ?? '').toLowerCase();
-    return roles.map((e)=> e.toLowerCase()).contains(r);
+    return roles.map((e) => e.toLowerCase()).contains(r);
   }
 }
