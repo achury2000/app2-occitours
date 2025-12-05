@@ -142,6 +142,8 @@ CREATE TABLE reservas (
     fecha DATE NOT NULL,
     numero_personas INT DEFAULT 1,
     precio_total DECIMAL(10,2) DEFAULT 0.00,
+    qr_code TEXT,
+    comprobante_pago TEXT,
     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
     FOREIGN KEY (programacion_id) REFERENCES programaciones(id),
     FOREIGN KEY (finca_id) REFERENCES fincas(id),
