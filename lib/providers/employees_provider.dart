@@ -12,7 +12,7 @@ class EmployeesProvider with ChangeNotifier {
 
   List<Map<String, String>> _employees = [];
 
-  EmployeesProvider(){
+  EmployeesProvider() {
     loadEmployees();
   }
 
@@ -27,9 +27,11 @@ class EmployeesProvider with ChangeNotifier {
     } else {
       try {
         final decoded = jsonDecode(raw) as List<dynamic>;
-        _employees = decoded.map((e) => Map<String,String>.fromEntries(
-          (e as Map).entries.map((kv) => MapEntry(kv.key.toString(), kv.value == null ? '' : kv.value.toString()))
-        )).toList();
+        _employees = decoded
+            .map((e) => Map<String, String>.fromEntries((e as Map).entries.map(
+                (kv) => MapEntry(kv.key.toString(),
+                    kv.value == null ? '' : kv.value.toString()))))
+            .toList();
       } catch (e) {
         _employees = [];
       }
@@ -42,16 +44,16 @@ class EmployeesProvider with ChangeNotifier {
     await prefs.setString(_prefsKey, jsonEncode(_employees));
   }
 
-  Future<void> addEmployee(Map<String,String> emp) async {
+  Future<void> addEmployee(Map<String, String> emp) async {
     final id = 'e${DateTime.now().millisecondsSinceEpoch}';
-    final newEmp = Map<String,String>.from(emp);
+    final newEmp = Map<String, String>.from(emp);
     newEmp['id'] = id;
     _employees.insert(0, newEmp);
     await _saveToPrefs();
     notifyListeners();
   }
 
-  Future<void> updateEmployee(String id, Map<String,String> data) async {
+  Future<void> updateEmployee(String id, Map<String, String> data) async {
     final idx = _employees.indexWhere((e) => e['id'] == id);
     if (idx >= 0) {
       _employees[idx] = {..._employees[idx], ...data};

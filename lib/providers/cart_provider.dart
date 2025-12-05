@@ -12,16 +12,17 @@ import '../models/product.dart';
 class CartProvider with ChangeNotifier {
   final List<CartItem> _items = [];
 
-  CartProvider(){
+  CartProvider() {
     _loadCart();
   }
 
   List<CartItem> get items => List.unmodifiable(_items);
 
   // Agrega un producto al carrito. `variant` es opcional y distingue variantes del mismo producto.
-  void addProduct(Product p, {int qty = 1, String? variant}){
-    final idx = _items.indexWhere((c) => c.product.id == p.id && c.selectedVariant == variant);
-    if(idx>=0){
+  void addProduct(Product p, {int qty = 1, String? variant}) {
+    final idx = _items.indexWhere(
+        (c) => c.product.id == p.id && c.selectedVariant == variant);
+    if (idx >= 0) {
       _items[idx].quantity += qty;
     } else {
       _items.add(CartItem(product: p, quantity: qty, selectedVariant: variant));
@@ -30,23 +31,26 @@ class CartProvider with ChangeNotifier {
     _saveCart();
   }
 
-  void removeProduct(String productId, {String? variant}){
-    _items.removeWhere((c)=> c.product.id==productId && c.selectedVariant==variant);
+  void removeProduct(String productId, {String? variant}) {
+    _items.removeWhere(
+        (c) => c.product.id == productId && c.selectedVariant == variant);
     notifyListeners();
     _saveCart();
   }
 
-  void updateQuantity(String productId, int qty, {String? variant}){
-    final idx = _items.indexWhere((c)=> c.product.id==productId && c.selectedVariant==variant);
-    if(idx>=0){
+  void updateQuantity(String productId, int qty, {String? variant}) {
+    final idx = _items.indexWhere(
+        (c) => c.product.id == productId && c.selectedVariant == variant);
+    if (idx >= 0) {
       _items[idx].quantity = qty;
-      if(_items[idx].quantity<=0) _items.removeAt(idx);
+      if (_items[idx].quantity <= 0) _items.removeAt(idx);
       notifyListeners();
       _saveCart();
     }
   }
 
-  double get subtotal => _items.fold(0, (s, c) => s + c.product.price * c.quantity);
+  double get subtotal =>
+      _items.fold(0, (s, c) => s + c.product.price * c.quantity);
 
   double get shipping => _items.isEmpty ? 0 : 15000; // simplified
 
@@ -59,16 +63,16 @@ class CartProvider with ChangeNotifier {
   String? get couponCode => _couponCode;
   double get couponValue => _couponValue;
 
-  bool applyCoupon(String code){
+  bool applyCoupon(String code) {
     // simulated coupons
-    if (code=='DESC10'){
+    if (code == 'DESC10') {
       _couponCode = code;
       _couponValue = subtotal * 0.10;
       _saveCart();
       notifyListeners();
       return true;
     }
-    if (code=='FREESHIP'){
+    if (code == 'FREESHIP') {
       _couponCode = code;
       _couponValue = shipping;
       _saveCart();
@@ -80,7 +84,7 @@ class CartProvider with ChangeNotifier {
 
   double get discount => _couponValue;
 
-  void clear(){
+  void clear() {
     _items.clear();
     notifyListeners();
     _saveCart();
@@ -88,14 +92,20 @@ class CartProvider with ChangeNotifier {
 
   Future<void> _saveCart() async {
     final prefs = await SharedPreferences.getInstance();
-    final data = _items.map((c)=>{'id': c.product.id, 'qty': c.quantity, 'variant': c.selectedVariant}).toList();
+    final data = _items
+        .map((c) => {
+              'id': c.product.id,
+              'qty': c.quantity,
+              'variant': c.selectedVariant
+            })
+        .toList();
     await prefs.setString('cart', jsonEncode(data));
   }
 
   Future<void> _loadCart() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString('cart');
-    if(raw==null) return;
+    if (raw == null) return;
     try {
       // TODO: Cargar productos desde backend/ProductsProvider en lugar de datos mock
       // final List decoded = jsonDecode(raw) as List;
@@ -109,7 +119,7 @@ class CartProvider with ChangeNotifier {
       _items.clear();
       notifyListeners();
     } catch (e) {
-        // ignorar errores de parseo
+      // ignorar errores de parseo
     }
   }
 }

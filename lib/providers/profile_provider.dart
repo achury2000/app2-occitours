@@ -19,18 +19,18 @@ class ProfileProvider with ChangeNotifier {
     // intentar cargar ediciones de perfil persistidas
     final prefs = await SharedPreferences.getInstance();
     final key = 'profile_$userId';
-    if (_user != null && prefs.containsKey(key)){
+    if (_user != null && prefs.containsKey(key)) {
       try {
         final raw = prefs.getString(key);
-        if (raw!=null){
+        if (raw != null) {
           final parts = raw.split('|');
-          if (parts.length>=3){
+          if (parts.length >= 3) {
             _user!.name = parts[0];
             _user!.phone = parts[1];
             _user!.address = parts[2];
           }
         }
-      } catch(_){}
+      } catch (_) {}
     }
     _loading = false;
     notifyListeners();
@@ -44,7 +44,8 @@ class ProfileProvider with ChangeNotifier {
     // persist small profile changes locally
     final prefs = await SharedPreferences.getInstance();
     final key = 'profile_${_user!.id}';
-    await prefs.setString(key, '${_user!.name}|${_user!.phone ?? ''}|${_user!.address ?? ''}');
+    await prefs.setString(
+        key, '${_user!.name}|${_user!.phone ?? ''}|${_user!.address ?? ''}');
     _loading = false;
     notifyListeners();
   }

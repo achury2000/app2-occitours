@@ -15,7 +15,7 @@ class RolesProvider with ChangeNotifier {
 
   List<Map<String, dynamic>> get roles => List.unmodifiable(_roles);
 
-  RolesProvider(){
+  RolesProvider() {
     loadRoles();
   }
 
@@ -28,7 +28,8 @@ class RolesProvider with ChangeNotifier {
     } else {
       try {
         final decoded = jsonDecode(raw) as List<dynamic>;
-        _roles = decoded.map((e) => Map<String,dynamic>.from(e as Map)).toList();
+        _roles =
+            decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       } catch (e) {
         _roles = [];
       }
@@ -39,7 +40,7 @@ class RolesProvider with ChangeNotifier {
       try {
         final decoded = jsonDecode(auditRaw) as List<dynamic>;
         _audit.clear();
-        _audit.addAll(decoded.map((e) => Map<String,dynamic>.from(e as Map)));
+        _audit.addAll(decoded.map((e) => Map<String, dynamic>.from(e as Map)));
       } catch (_) {}
     }
     notifyListeners();
@@ -80,7 +81,8 @@ class RolesProvider with ChangeNotifier {
   }
 
   // toggle active with audit entry (actor may be null for system)
-  Future<void> toggleActiveWithAudit(String id, {Map<String, String>? actor, String? comment}) async {
+  Future<void> toggleActiveWithAudit(String id,
+      {Map<String, String>? actor, String? comment}) async {
     final idx = _roles.indexWhere((r) => r['id'] == id);
     if (idx >= 0) {
       _roles[idx]['active'] = !(_roles[idx]['active'] as bool);
@@ -98,7 +100,8 @@ class RolesProvider with ChangeNotifier {
     }
   }
 
-  Future<void> setPermissions(String id, List<String> permissions, {Map<String, String>? actor, String? comment}) async {
+  Future<void> setPermissions(String id, List<String> permissions,
+      {Map<String, String>? actor, String? comment}) async {
     final idx = _roles.indexWhere((r) => r['id'] == id);
     if (idx >= 0) {
       _roles[idx]['permissions'] = permissions;
@@ -116,7 +119,8 @@ class RolesProvider with ChangeNotifier {
     }
   }
 
-  Future<void> deleteRoleWithAudit(String id, {Map<String, String>? actor, String? comment}) async {
+  Future<void> deleteRoleWithAudit(String id,
+      {Map<String, String>? actor, String? comment}) async {
     _roles.removeWhere((r) => r['id'] == id);
     _audit.insert(0, {
       'action': 'delete_role',

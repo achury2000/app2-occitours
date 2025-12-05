@@ -80,14 +80,17 @@ class FincasProvider with ChangeNotifier {
     }
   }
 
-  Finca? findById(String id) => _items.firstWhere((f) => f.id == id, orElse: ()=>throw 'Not found');
+  Finca? findById(String id) =>
+      _items.firstWhere((f) => f.id == id, orElse: () => throw 'Not found');
 
-  Future<void> addFinca(Finca finca, {Map<String,String>? actor}) async {
+  Future<void> addFinca(Finca finca, {Map<String, String>? actor}) async {
     if (finca.name.trim().isEmpty) throw Exception('El nombre es obligatorio');
     if (finca.code.trim().isEmpty) throw Exception('El código es obligatorio');
-    final exists = _items.any((f) => f.name.toLowerCase() == finca.name.toLowerCase());
+    final exists =
+        _items.any((f) => f.name.toLowerCase() == finca.name.toLowerCase());
     if (exists) throw Exception('Ya existe una finca con ese nombre');
-    final codeExists = _items.any((f) => f.code.toLowerCase() == finca.code.toLowerCase());
+    final codeExists =
+        _items.any((f) => f.code.toLowerCase() == finca.code.toLowerCase());
     if (codeExists) throw Exception('Ya existe una finca con ese código');
     _items.insert(0, finca);
     _audit.insert(0, {
@@ -101,14 +104,17 @@ class FincasProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateFinca(Finca finca, {Map<String,String>? actor, String? reason}) async {
+  Future<void> updateFinca(Finca finca,
+      {Map<String, String>? actor, String? reason}) async {
     final index = _items.indexWhere((f) => f.id == finca.id);
     if (index == -1) throw Exception('Finca no encontrada');
     if (finca.name.trim().isEmpty) throw Exception('El nombre es obligatorio');
     if (finca.code.trim().isEmpty) throw Exception('El código es obligatorio');
-    final dup = _items.any((f) => f.id != finca.id && f.name.toLowerCase() == finca.name.toLowerCase());
+    final dup = _items.any((f) =>
+        f.id != finca.id && f.name.toLowerCase() == finca.name.toLowerCase());
     if (dup) throw Exception('Otra finca ya tiene ese nombre');
-    final codeDup = _items.any((f) => f.id != finca.id && f.code.toLowerCase() == finca.code.toLowerCase());
+    final codeDup = _items.any((f) =>
+        f.id != finca.id && f.code.toLowerCase() == finca.code.toLowerCase());
     if (codeDup) throw Exception('Otra finca ya tiene ese código');
     final before = _items[index];
     _items[index] = finca;
@@ -125,8 +131,10 @@ class FincasProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> deleteFinca(String id, {Map<String,String>? actor, String? reason}) async {
-    final removed = _items.firstWhere((f) => f.id == id, orElse: () => throw Exception('Finca no encontrada'));
+  Future<void> deleteFinca(String id,
+      {Map<String, String>? actor, String? reason}) async {
+    final removed = _items.firstWhere((f) => f.id == id,
+        orElse: () => throw Exception('Finca no encontrada'));
     _items.removeWhere((f) => f.id == id);
     _audit.insert(0, {
       'action': 'delete',
@@ -141,11 +149,17 @@ class FincasProvider with ChangeNotifier {
   }
 
   // Búsqueda: por texto (name/code) y/o por proximidad (lat/lng + radio en km)
-  List<Finca> search({String? query, double? lat, double? lng, double? radiusKm}) {
+  List<Finca> search(
+      {String? query, double? lat, double? lng, double? radiusKm}) {
     var results = _items;
     if (query != null && query.trim().isNotEmpty) {
       final q = query.toLowerCase();
-      results = results.where((f) => f.name.toLowerCase().contains(q) || f.code.toLowerCase().contains(q) || f.description.toLowerCase().contains(q)).toList();
+      results = results
+          .where((f) =>
+              f.name.toLowerCase().contains(q) ||
+              f.code.toLowerCase().contains(q) ||
+              f.description.toLowerCase().contains(q))
+          .toList();
     }
     if (lat != null && lng != null && radiusKm != null) {
       results = results.where((f) {
@@ -161,8 +175,12 @@ class FincasProvider with ChangeNotifier {
     const earthRadius = 6371.0; // km
     final dLat = _toRadians(lat2 - lat1);
     final dLon = _toRadians(lon2 - lon1);
-    final a = math.sin(dLat/2) * math.sin(dLat/2) + math.cos(_toRadians(lat1)) * math.cos(_toRadians(lat2)) * math.sin(dLon/2) * math.sin(dLon/2);
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a));
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRadians(lat1)) *
+            math.cos(_toRadians(lat2)) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
     return earthRadius * c;
   }
 
@@ -171,17 +189,33 @@ class FincasProvider with ChangeNotifier {
   // Exportación CSV simple (id,code,name,location,capacity,price,lat,lng,active)
   String exportCsv() {
     final sb = StringBuffer();
-    sb.writeln('id,code,name,location,capacity,pricePerNight,latitude,longitude,active');
+    sb.writeln(
+        'id,code,name,location,capacity,pricePerNight,latitude,longitude,active');
     for (final f in _items) {
-      sb.writeln([f.id,f.code,_escapeCsv(f.name),_escapeCsv(f.location),f.capacity,f.pricePerNight,f.latitude ?? '',f.longitude ?? '',f.active].join(','));
+      sb.writeln([
+        f.id,
+        f.code,
+        _escapeCsv(f.name),
+        _escapeCsv(f.location),
+        f.capacity,
+        f.pricePerNight,
+        f.latitude ?? '',
+        f.longitude ?? '',
+        f.active
+      ].join(','));
     }
     return sb.toString();
   }
 
   String _escapeCsv(String input) => '"${input.replaceAll('"', '""')}"';
 
-  Future<void> importFromCsv(String csv, {bool replace = false, Map<String,String>? actor}) async {
-    final lines = csv.split('\n').map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
+  Future<void> importFromCsv(String csv,
+      {bool replace = false, Map<String, String>? actor}) async {
+    final lines = csv
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
     if (lines.isEmpty) return;
     // header row intentionally ignored (we parse columns by position)
     final rows = lines.skip(1);
@@ -196,10 +230,26 @@ class FincasProvider with ChangeNotifier {
       final location = cols.length > 3 ? cols[3] : '';
       final capacity = cols.length > 4 ? int.tryParse(cols[4]) ?? 0 : 0;
       final price = cols.length > 5 ? double.tryParse(cols[5]) ?? 0.0 : 0.0;
-      final lat = cols.length > 6 && cols[6].isNotEmpty ? double.tryParse(cols[6]) : null;
-      final lng = cols.length > 7 && cols[7].isNotEmpty ? double.tryParse(cols[7]) : null;
+      final lat = cols.length > 6 && cols[6].isNotEmpty
+          ? double.tryParse(cols[6])
+          : null;
+      final lng = cols.length > 7 && cols[7].isNotEmpty
+          ? double.tryParse(cols[7])
+          : null;
       final active = cols.length > 8 ? cols[8].toLowerCase() == 'true' : true;
-      imported.add(Finca(id: id, code: code, name: name, description: '', location: location, capacity: capacity, pricePerNight: price, images: [], latitude: lat, longitude: lng, serviceIds: [], active: active));
+      imported.add(Finca(
+          id: id,
+          code: code,
+          name: name,
+          description: '',
+          location: location,
+          capacity: capacity,
+          pricePerNight: price,
+          images: [],
+          latitude: lat,
+          longitude: lng,
+          serviceIds: [],
+          active: active));
     }
     if (replace) {
       _items = imported;
@@ -207,8 +257,10 @@ class FincasProvider with ChangeNotifier {
       // upsert by id
       for (final f in imported) {
         final idx = _items.indexWhere((e) => e.id == f.id);
-        if (idx == -1) _items.add(f);
-        else _items[idx] = f;
+        if (idx == -1)
+          _items.add(f);
+        else
+          _items[idx] = f;
       }
     }
     _audit.insert(0, {
@@ -232,24 +284,24 @@ class FincasProvider with ChangeNotifier {
     for (var i = 0; i < line.length; i++) {
       final ch = line[i];
       if (ch == '"') {
-        if (inQuotes && i+1 < line.length && line[i+1] == '"') {
-            // comilla escapada representada como ""
-            cur.write('"');
+        if (inQuotes && i + 1 < line.length && line[i + 1] == '"') {
+          // comilla escapada representada como ""
+          cur.write('"');
           i++; // skip escaped quote
           continue;
         }
         if (inQuotes) {
-            // Si el siguiente caracter es coma o fin de línea, esto cierra la comilla
-          final next = i+1 < line.length ? line[i+1] : null;
+          // Si el siguiente caracter es coma o fin de línea, esto cierra la comilla
+          final next = i + 1 < line.length ? line[i + 1] : null;
           if (next == null || next == ',') {
             inQuotes = false;
             continue;
           }
-            // En caso contrario tratamos la comilla como carácter literal (modo tolerante)
+          // En caso contrario tratamos la comilla como carácter literal (modo tolerante)
           cur.write('"');
           continue;
         }
-          // apertura de comillas
+        // apertura de comillas
         inQuotes = true;
         continue;
       }

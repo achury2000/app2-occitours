@@ -26,7 +26,7 @@ class ClientsProvider with ChangeNotifier {
 
   bool get loading => _loading;
 
-  ClientsProvider({List<Map<String,dynamic>>? initialClients}) {
+  ClientsProvider({List<Map<String, dynamic>>? initialClients}) {
     if (initialClients != null) {
       _clients = initialClients;
       _loading = false;
@@ -53,7 +53,8 @@ class ClientsProvider with ChangeNotifier {
     } else {
       try {
         final decoded = jsonDecode(rawClients) as List<dynamic>;
-        _clients = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _clients =
+            decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       } catch (e) {
         _clients = [];
       }
@@ -65,7 +66,8 @@ class ClientsProvider with ChangeNotifier {
     } else {
       try {
         final decoded = jsonDecode(rawCampaigns) as List<dynamic>;
-        _campaigns = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _campaigns =
+            decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       } catch (e) {
         _campaigns = [];
       }
@@ -77,7 +79,8 @@ class ClientsProvider with ChangeNotifier {
     } else {
       try {
         final decoded = jsonDecode(rawAudit) as List<dynamic>;
-        _audit = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _audit =
+            decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       } catch (e) {
         _audit = [];
       }
@@ -103,36 +106,58 @@ class ClientsProvider with ChangeNotifier {
     await prefs.setString(_auditKey, jsonEncode(_audit));
   }
 
-  Future<String> addClient(Map<String, dynamic> data, {Map<String,String>? actor}) async {
+  Future<String> addClient(Map<String, dynamic> data,
+      {Map<String, String>? actor}) async {
     final id = 'C${DateTime.now().millisecondsSinceEpoch}';
     final entry = Map<String, dynamic>.from(data);
     entry['id'] = id;
-    entry['created'] = entry['created'] ?? DateTime.now().toIso8601String().split('T')[0];
+    entry['created'] =
+        entry['created'] ?? DateTime.now().toIso8601String().split('T')[0];
     entry['active'] = entry['active'] ?? true;
     _clients.insert(0, entry);
-    _audit.insert(0, {'action':'create_client','clientId': id, 'actor': actor ?? {}, 'timestamp': DateTime.now().toIso8601String(), 'data': entry});
+    _audit.insert(0, {
+      'action': 'create_client',
+      'clientId': id,
+      'actor': actor ?? {},
+      'timestamp': DateTime.now().toIso8601String(),
+      'data': entry
+    });
     await _saveClients();
     await _saveAudit();
     notifyListeners();
     return id;
   }
 
-  Future<void> updateClient(String id, Map<String, dynamic> data, {Map<String,String>? actor}) async {
+  Future<void> updateClient(String id, Map<String, dynamic> data,
+      {Map<String, String>? actor}) async {
     final idx = _clients.indexWhere((c) => c['id'] == id);
     if (idx >= 0) {
-      final prev = Map<String,dynamic>.from(_clients[idx]);
+      final prev = Map<String, dynamic>.from(_clients[idx]);
       _clients[idx] = {..._clients[idx], ...data};
-      _audit.insert(0, {'action':'update_client','clientId': id, 'previous': prev, 'new': _clients[idx], 'actor': actor ?? {}, 'timestamp': DateTime.now().toIso8601String()});
+      _audit.insert(0, {
+        'action': 'update_client',
+        'clientId': id,
+        'previous': prev,
+        'new': _clients[idx],
+        'actor': actor ?? {},
+        'timestamp': DateTime.now().toIso8601String()
+      });
       await _saveClients();
       await _saveAudit();
       notifyListeners();
     }
   }
 
-  Future<void> deleteClient(String id, {Map<String,String>? actor}) async {
-    final removed = _clients.firstWhere((c)=> c['id']==id, orElse: ()=> {});
+  Future<void> deleteClient(String id, {Map<String, String>? actor}) async {
+    final removed = _clients.firstWhere((c) => c['id'] == id, orElse: () => {});
     _clients.removeWhere((c) => c['id'] == id);
-    _audit.insert(0, {'action':'delete_client','clientId': id, 'actor': actor ?? {}, 'timestamp': DateTime.now().toIso8601String(), 'data': removed});
+    _audit.insert(0, {
+      'action': 'delete_client',
+      'clientId': id,
+      'actor': actor ?? {},
+      'timestamp': DateTime.now().toIso8601String(),
+      'data': removed
+    });
     await _saveClients();
     await _saveAudit();
     notifyListeners();
@@ -147,46 +172,74 @@ class ClientsProvider with ChangeNotifier {
   }
 
   // Block/unblock
-  Future<void> setActive(String id, bool active, {Map<String,String>? actor}) async {
+  Future<void> setActive(String id, bool active,
+      {Map<String, String>? actor}) async {
     final idx = _clients.indexWhere((c) => c['id'] == id);
     if (idx < 0) return;
-    final prev = Map<String,dynamic>.from(_clients[idx]);
+    final prev = Map<String, dynamic>.from(_clients[idx]);
     _clients[idx]['active'] = active;
-    _audit.insert(0, {'action': active ? 'activate_client' : 'deactivate_client','clientId': id, 'previous': prev, 'new': _clients[idx], 'actor': actor ?? {}, 'timestamp': DateTime.now().toIso8601String()});
-    await _saveClients(); await _saveAudit(); notifyListeners();
+    _audit.insert(0, {
+      'action': active ? 'activate_client' : 'deactivate_client',
+      'clientId': id,
+      'previous': prev,
+      'new': _clients[idx],
+      'actor': actor ?? {},
+      'timestamp': DateTime.now().toIso8601String()
+    });
+    await _saveClients();
+    await _saveAudit();
+    notifyListeners();
   }
 
   // Búsqueda y filtros
-  List<Map<String,dynamic>> searchClients({String? query, bool? active}){
-    Iterable<Map<String,dynamic>> res = _clients;
+  List<Map<String, dynamic>> searchClients({String? query, bool? active}) {
+    Iterable<Map<String, dynamic>> res = _clients;
     if (query != null && query.isNotEmpty) {
       final q = query.toLowerCase();
-      res = res.where((c) => ((c['name'] ?? '') as String).toLowerCase().contains(q) || ((c['email'] ?? '') as String).toLowerCase().contains(q) || ((c['phone'] ?? '') as String).toLowerCase().contains(q));
+      res = res.where((c) =>
+          ((c['name'] ?? '') as String).toLowerCase().contains(q) ||
+          ((c['email'] ?? '') as String).toLowerCase().contains(q) ||
+          ((c['phone'] ?? '') as String).toLowerCase().contains(q));
     }
     if (active != null) res = res.where((c) => (c['active'] ?? true) == active);
     return res.toList();
   }
 
   // Exportación e importación CSV
-  String exportCsv(){
-    final headers = ['id','name','email','phone','address','active','created'];
-    final rows = [_clients.map((c) => headers.map((h) => (c[h] ?? '').toString()).join(','))];
+  String exportCsv() {
+    final headers = [
+      'id',
+      'name',
+      'email',
+      'phone',
+      'address',
+      'active',
+      'created'
+    ];
+    final rows = [
+      _clients.map((c) => headers.map((h) => (c[h] ?? '').toString()).join(','))
+    ];
     return [headers.join(','), ...rows].join('\n');
   }
 
-  Future<void> importFromCsv(String csv, {bool replace = false, Map<String,String>? actor}) async {
-    final lines = csv.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
+  Future<void> importFromCsv(String csv,
+      {bool replace = false, Map<String, String>? actor}) async {
+    final lines =
+        csv.split(RegExp(r'\r?\n')).where((l) => l.trim().isNotEmpty).toList();
     if (lines.isEmpty) return;
-    final headers = lines.first.split(',').map((s)=> s.trim()).toList();
-    final entries = <Map<String,dynamic>>[];
-    for (var i=1;i<lines.length;i++){
+    final headers = lines.first.split(',').map((s) => s.trim()).toList();
+    final entries = <Map<String, dynamic>>[];
+    for (var i = 1; i < lines.length; i++) {
       final cols = lines[i].split(',');
-      final Map<String,dynamic> item = {};
-      for (var j=0;j<headers.length && j<cols.length;j++){
+      final Map<String, dynamic> item = {};
+      for (var j = 0; j < headers.length && j < cols.length; j++) {
         item[headers[j]] = cols[j];
       }
-      if (!item.containsKey('id') || (item['id'] == null || (item['id'] as String).isEmpty)) item['id'] = 'C${DateTime.now().millisecondsSinceEpoch}${i}';
-      item['active'] = (item['active'] == 'false' || item['active'] == '0') ? false : true;
+      if (!item.containsKey('id') ||
+          (item['id'] == null || (item['id'] as String).isEmpty))
+        item['id'] = 'C${DateTime.now().millisecondsSinceEpoch}${i}';
+      item['active'] =
+          (item['active'] == 'false' || item['active'] == '0') ? false : true;
       entries.add(item);
     }
     if (replace) {
@@ -194,14 +247,26 @@ class ClientsProvider with ChangeNotifier {
     } else {
       _clients.insertAll(0, entries);
     }
-    _audit.insert(0, {'action':'import_clients','count': entries.length, 'actor': actor ?? {}, 'timestamp': DateTime.now().toIso8601String()});
-    await _saveClients(); await _saveAudit(); notifyListeners();
+    _audit.insert(0, {
+      'action': 'import_clients',
+      'count': entries.length,
+      'actor': actor ?? {},
+      'timestamp': DateTime.now().toIso8601String()
+    });
+    await _saveClients();
+    await _saveAudit();
+    notifyListeners();
   }
 
   // Utilidades para campañas
   Future<String> addCampaign(Map<String, String> data) async {
     final id = 'CAM${DateTime.now().millisecondsSinceEpoch}';
-    final entry = {'id': id, 'title': data['title'] ?? '', 'description': data['description'] ?? '', 'created': DateTime.now().toIso8601String()};
+    final entry = {
+      'id': id,
+      'title': data['title'] ?? '',
+      'description': data['description'] ?? '',
+      'created': DateTime.now().toIso8601String()
+    };
     _campaigns.insert(0, entry);
     await _saveCampaigns();
     notifyListeners();

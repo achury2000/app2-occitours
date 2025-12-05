@@ -30,7 +30,7 @@ class ProductsProvider with ChangeNotifier {
   static const String _reorderLevelsKey = 'reorder_levels_v1';
   static const int _defaultReorderLevel = 5;
 
-  final Map<String, List<Map<String,dynamic>>> _stockHistory = {};
+  final Map<String, List<Map<String, dynamic>>> _stockHistory = {};
   final Map<String, int> _reorderLevels = {};
 
   List<Product> get items => List.unmodifiable(_items);
@@ -55,19 +55,24 @@ class ProductsProvider with ChangeNotifier {
     final shRaw = prefs.getString(_stockHistoryKey);
     if (shRaw != null && shRaw.isNotEmpty) {
       try {
-        final decoded = jsonDecode(shRaw) as Map<String,dynamic>;
+        final decoded = jsonDecode(shRaw) as Map<String, dynamic>;
         _stockHistory.clear();
-        decoded.forEach((k,v){ _stockHistory[k] = List<Map<String,dynamic>>.from((v as List).map((e)=> Map<String,dynamic>.from(e as Map))); });
-      } catch(_){ }
+        decoded.forEach((k, v) {
+          _stockHistory[k] = List<Map<String, dynamic>>.from(
+              (v as List).map((e) => Map<String, dynamic>.from(e as Map)));
+        });
+      } catch (_) {}
     }
     // load reorder levels
     final rlRaw = prefs.getString(_reorderLevelsKey);
     if (rlRaw != null && rlRaw.isNotEmpty) {
       try {
-        final decoded = jsonDecode(rlRaw) as Map<String,dynamic>;
+        final decoded = jsonDecode(rlRaw) as Map<String, dynamic>;
         _reorderLevels.clear();
-        decoded.forEach((k,v){ _reorderLevels[k] = (v as num).toInt(); });
-      } catch(_){ }
+        decoded.forEach((k, v) {
+          _reorderLevels[k] = (v as num).toInt();
+        });
+      } catch (_) {}
     }
     // build search index after loading
     _rebuildIndex();
@@ -89,7 +94,8 @@ class ProductsProvider with ChangeNotifier {
     await prefs.setString(_reorderLevelsKey, jsonEncode(_reorderLevels));
   }
 
-  Future<void> loadInitial({String? category, String? query, ProductSort? sort}) async {
+  Future<void> loadInitial(
+      {String? category, String? query, ProductSort? sort}) async {
     _loading = true;
     _error = null;
     _page = 0;
@@ -103,20 +109,21 @@ class ProductsProvider with ChangeNotifier {
         final found = _searchByQuery(query);
         results = _allItems.where((p) => found.contains(p.id)).toList();
       }
-      if (category != null) results = results.where((p) => p.category == category).toList();
+      if (category != null)
+        results = results.where((p) => p.category == category).toList();
       if (sort != null) {
         switch (sort) {
           case ProductSort.priceAsc:
-            results.sort((a,b)=>a.price.compareTo(b.price));
+            results.sort((a, b) => a.price.compareTo(b.price));
             break;
           case ProductSort.priceDesc:
-            results.sort((a,b)=>b.price.compareTo(a.price));
+            results.sort((a, b) => b.price.compareTo(a.price));
             break;
           case ProductSort.nameAsc:
-            results.sort((a,b)=>a.name.compareTo(b.name));
+            results.sort((a, b) => a.name.compareTo(b.name));
             break;
           case ProductSort.popularity:
-            results.sort((a,b)=>b.popularity.compareTo(a.popularity));
+            results.sort((a, b) => b.popularity.compareTo(a.popularity));
             break;
         }
       }
@@ -138,7 +145,9 @@ class ProductsProvider with ChangeNotifier {
       await Future.delayed(Duration(milliseconds: 300));
       _page++;
       final start = _page * _pageSize;
-      final List<Product> next = (_allItems.length > start) ? _allItems.skip(start).take(_pageSize).toList() : <Product>[];
+      final List<Product> next = (_allItems.length > start)
+          ? _allItems.skip(start).take(_pageSize).toList()
+          : <Product>[];
       _items.addAll(next);
     } catch (e) {
       _error = e.toString();
@@ -148,47 +157,54 @@ class ProductsProvider with ChangeNotifier {
     }
   }
 
-  Product? findById(String id) => _allItems.firstWhere((p) => p.id == id, orElse: ()=>throw 'Not found');
+  Product? findById(String id) =>
+      _allItems.firstWhere((p) => p.id == id, orElse: () => throw 'Not found');
 
   // --- Search/index helpers ---
-  void _rebuildIndex(){
+  void _rebuildIndex() {
     _index.clear();
-    for (final p in _allItems){
+    for (final p in _allItems) {
       final tokens = _tokenize('${p.name} ${p.code}');
-      for (final t in tokens){
-        _index.putIfAbsent(t, ()=> <String>{}).add(p.id);
+      for (final t in tokens) {
+        _index.putIfAbsent(t, () => <String>{}).add(p.id);
       }
     }
   }
 
-  Set<String> _searchByQuery(String query){
+  Set<String> _searchByQuery(String query) {
     final tokens = _tokenize(query);
-    if (tokens.isEmpty) return _allItems.map((e)=>e.id).toSet();
+    if (tokens.isEmpty) return _allItems.map((e) => e.id).toSet();
     Set<String>? result;
-    for (final t in tokens){
+    for (final t in tokens) {
       final ids = _index[t] ?? <String>{};
-      if (result == null) result = Set<String>.from(ids);
-      else result = result.intersection(ids);
+      if (result == null)
+        result = Set<String>.from(ids);
+      else
+        result = result.intersection(ids);
       if (result.isEmpty) break;
     }
     return result ?? <String>{};
   }
 
-  List<String> _tokenize(String text){
+  List<String> _tokenize(String text) {
     return text
         .toLowerCase()
         .split(RegExp(r"[^a-z0-9]+"))
-        .where((s)=> s.isNotEmpty)
+        .where((s) => s.isNotEmpty)
         .toList();
   }
 
   // CRUD operations
   Future<void> addProduct(Product product) async {
-    if (product.name.trim().isEmpty) throw Exception('El nombre es obligatorio');
-    if (product.code.trim().isEmpty) throw Exception('El código es obligatorio');
-    final exists = _allItems.any((p) => p.name.toLowerCase() == product.name.toLowerCase());
+    if (product.name.trim().isEmpty)
+      throw Exception('El nombre es obligatorio');
+    if (product.code.trim().isEmpty)
+      throw Exception('El código es obligatorio');
+    final exists = _allItems
+        .any((p) => p.name.toLowerCase() == product.name.toLowerCase());
     if (exists) throw Exception('Ya existe un servicio con ese nombre');
-    final codeExists = _allItems.any((p) => p.code.toLowerCase() == product.code.toLowerCase());
+    final codeExists = _allItems
+        .any((p) => p.code.toLowerCase() == product.code.toLowerCase());
     if (codeExists) throw Exception('Ya existe un servicio con ese código');
     _allItems.insert(0, product);
     await _saveToPrefs();
@@ -197,22 +213,36 @@ class ProductsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateProduct(Product product, {String? reason, Map<String,String>? actor}) async {
+  Future<void> updateProduct(Product product,
+      {String? reason, Map<String, String>? actor}) async {
     final index = _allItems.indexWhere((p) => p.id == product.id);
     if (index == -1) throw Exception('Producto no encontrado');
-    if (product.name.trim().isEmpty) throw Exception('El nombre es obligatorio');
-    if (product.code.trim().isEmpty) throw Exception('El código es obligatorio');
-    final dup = _allItems.any((p) => p.id != product.id && p.name.toLowerCase() == product.name.toLowerCase());
+    if (product.name.trim().isEmpty)
+      throw Exception('El nombre es obligatorio');
+    if (product.code.trim().isEmpty)
+      throw Exception('El código es obligatorio');
+    final dup = _allItems.any((p) =>
+        p.id != product.id &&
+        p.name.toLowerCase() == product.name.toLowerCase());
     if (dup) throw Exception('Otro servicio ya tiene ese nombre');
-    final codeDup = _allItems.any((p) => p.id != product.id && p.code.toLowerCase() == product.code.toLowerCase());
+    final codeDup = _allItems.any((p) =>
+        p.id != product.id &&
+        p.code.toLowerCase() == product.code.toLowerCase());
     if (codeDup) throw Exception('Otro servicio ya tiene ese código');
     // if stock changed, register history
     final prevStock = _allItems[index].stock;
     _allItems[index] = product;
     await _saveToPrefs();
     if (product.stock != prevStock) {
-      final entry = {'productId': product.id, 'timestamp': DateTime.now().toIso8601String(), 'previous': prevStock, 'new': product.stock, 'reason': reason ?? 'manual', 'actor': actor ?? {}};
-      _stockHistory.putIfAbsent(product.id, ()=>[]).insert(0, entry);
+      final entry = {
+        'productId': product.id,
+        'timestamp': DateTime.now().toIso8601String(),
+        'previous': prevStock,
+        'new': product.stock,
+        'reason': reason ?? 'manual',
+        'actor': actor ?? {}
+      };
+      _stockHistory.putIfAbsent(product.id, () => []).insert(0, entry);
       await _saveStockHistory();
     }
     _rebuildIndex();
@@ -231,10 +261,12 @@ class ProductsProvider with ChangeNotifier {
   }
 
   // Stock history API
-  List<Map<String,dynamic>> stockHistoryFor(String productId) => List.unmodifiable(_stockHistory[productId] ?? []);
+  List<Map<String, dynamic>> stockHistoryFor(String productId) =>
+      List.unmodifiable(_stockHistory[productId] ?? []);
 
   // reorder level per product
-  int reorderLevelFor(String productId) => _reorderLevels[productId] ?? _defaultReorderLevel;
+  int reorderLevelFor(String productId) =>
+      _reorderLevels[productId] ?? _defaultReorderLevel;
   Future<void> setReorderLevel(String productId, int level) async {
     _reorderLevels[productId] = level;
     await _saveReorderLevels();
@@ -251,7 +283,8 @@ class ProductsProvider with ChangeNotifier {
     final sb = StringBuffer();
     sb.writeln('id,code,name,category,price,stock');
     for (final p in _allItems) {
-      final line = '${p.id},${_escape(p.code)},${_escape(p.name)},${_escape(p.category)},${p.price},${p.stock}';
+      final line =
+          '${p.id},${_escape(p.code)},${_escape(p.name)},${_escape(p.category)},${p.price},${p.stock}';
       sb.writeln(line);
     }
     return sb.toString();
@@ -260,7 +293,7 @@ class ProductsProvider with ChangeNotifier {
   Future<void> importFromCsv(String csv, {bool updateExisting = true}) async {
     final lines = LineSplitter.split(csv).toList();
     if (lines.length <= 1) return;
-    for (int i=1;i<lines.length;i++) {
+    for (int i = 1; i < lines.length; i++) {
       final row = lines[i].trim();
       if (row.isEmpty) continue;
       // simple split by comma, no advanced parsing
@@ -272,8 +305,19 @@ class ProductsProvider with ChangeNotifier {
       final category = parts[3].trim();
       final price = double.tryParse(parts[4].trim()) ?? 0.0;
       final stock = int.tryParse(parts[5].trim()) ?? 0;
-      final existingIndex = _allItems.indexWhere((p) => p.id == id || p.code == code);
-      final prod = Product(id: id, code: code, name: name, description: '', price: price, imageUrl: '', category: category, stock: stock, variants: [], popularity: 0);
+      final existingIndex =
+          _allItems.indexWhere((p) => p.id == id || p.code == code);
+      final prod = Product(
+          id: id,
+          code: code,
+          name: name,
+          description: '',
+          price: price,
+          imageUrl: '',
+          category: category,
+          stock: stock,
+          variants: [],
+          popularity: 0);
       if (existingIndex >= 0) {
         if (updateExisting) {
           _allItems[existingIndex] = prod;
@@ -288,8 +332,9 @@ class ProductsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  String _escape(String s){
-    if (s.contains(',') || s.contains('"')) return '"${s.replaceAll('"', '""')}"';
+  String _escape(String s) {
+    if (s.contains(',') || s.contains('"'))
+      return '"${s.replaceAll('"', '""')}"';
     return s;
   }
 }
