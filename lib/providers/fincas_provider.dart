@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/finca.dart';
-import '../data/mock_fincas.dart';
 
 /// Proveedor que gestiona las fincas (CRUD, búsqueda y persistencia).
 ///
@@ -43,10 +42,10 @@ class FincasProvider with ChangeNotifier {
       try {
         _items = Finca.decodeList(raw);
       } catch (_) {
-        _items = List.from(mockFincas);
+        _items = [];
       }
     } else {
-      _items = List.from(mockFincas);
+      _items = [];
       await _saveToPrefs();
     }
 

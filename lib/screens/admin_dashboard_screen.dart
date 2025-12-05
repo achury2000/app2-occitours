@@ -8,7 +8,7 @@ import '../providers/auth_provider.dart';
 import '../providers/products_provider.dart';
 import '../providers/reports_provider.dart';
 import '../providers/reservations_provider.dart';
-import '../data/mock_users.dart';
+import '../services/api_service.dart';
 // parte linsaith
 
 /// Pantalla principal del panel de administración.
@@ -64,8 +64,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _loadStats() async {
     setState(()=> _loading = true);
-    // users from mock
-    _totalUsers = mockUsers.length;
+    // users from API
+    try {
+      final apiService = ApiService();
+      final users = await apiService.getUsers();
+      _totalUsers = users.length;
+    } catch (e) {
+      _totalUsers = 0;
+    }
     // packages from ProductsProvider
     final productsProv = Provider.of<ProductsProvider>(context, listen: false);
     await productsProv.loadInitial();

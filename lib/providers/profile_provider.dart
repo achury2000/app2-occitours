@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
-import '../data/mock_users.dart';
 
 class ProfileProvider with ChangeNotifier {
   User? _user;
@@ -15,11 +14,12 @@ class ProfileProvider with ChangeNotifier {
     _loading = true;
     notifyListeners();
     await Future.delayed(Duration(milliseconds: 600));
-    _user = mockUsers.firstWhere((u)=>u.id==userId, orElse: ()=>mockUsers.first);
+    // TODO: Cargar usuario desde backend usando userId
+    _user = null; // Sin datos mock, cargar desde API
     // intentar cargar ediciones de perfil persistidas
     final prefs = await SharedPreferences.getInstance();
-    final key = 'profile_${_user!.id}';
-    if (prefs.containsKey(key)){
+    final key = 'profile_$userId';
+    if (_user != null && prefs.containsKey(key)){
       try {
         final raw = prefs.getString(key);
         if (raw!=null){

@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
-import '../data/mock_products.dart';
 
 /// Proveedor que gestiona el carrito de compras.
 ///
@@ -98,19 +97,16 @@ class CartProvider with ChangeNotifier {
     final raw = prefs.getString('cart');
     if(raw==null) return;
     try {
-      final List decoded = jsonDecode(raw) as List;
+      // TODO: Cargar productos desde backend/ProductsProvider en lugar de datos mock
+      // final List decoded = jsonDecode(raw) as List;
+      // _items.clear();
+      // for(final e in decoded){
+      //   final id = e['id'] as String;
+      //   final qty = e['qty'] as int;
+      //   final variant = e['variant'] as String?;
+      //   // Buscar producto desde ProductsProvider o API
+      // }
       _items.clear();
-      for(final e in decoded){
-        final id = e['id'] as String;
-        final qty = e['qty'] as int;
-        final variant = e['variant'] as String?;
-          try {
-            final prod = mockProducts.firstWhere((p) => p.id == id);
-            _items.add(CartItem(product: prod, quantity: qty, selectedVariant: variant));
-          } catch (_) {
-              // producto no encontrado en los datos mock, omitir
-          }
-      }
       notifyListeners();
     } catch (e) {
         // ignorar errores de parseo

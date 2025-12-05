@@ -4,7 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/services.dart';
 import '../providers/reports_provider.dart';
 import '../providers/reservations_provider.dart';
-import '../data/mock_users.dart';
+import '../services/api_service.dart';
 
 class AdminAnalyticsScreen extends StatefulWidget {
   static const routeName = '/admin/analytics';
@@ -18,6 +18,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   bool _inited = false;
   String _selectedPeriod = 'Último mes';
   String _selectedLocation = 'Todas';
+  int _totalUsers = 0;
 
   @override
   void didChangeDependencies() {
@@ -27,11 +28,22 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       _reservationsProv = Provider.of<ReservationsProvider>(context);
       // carga inicial - programar después del build para evitar notifyListeners durante el build
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadUsers();
         _applyFiltersAndRegenerate();
       });
       // escuchar cambios
       _reservationsProv.addListener(_onReservationsChanged);
       _inited = true;
+    }
+  }
+
+  Future<void> _loadUsers() async {
+    try {
+      final apiService = ApiService();
+      final users = await apiService.getUsers();
+      if (mounted) setState(() => _totalUsers = users.length);
+    } catch (e) {
+      if (mounted) setState(() => _totalUsers = 0);
     }
   }
 
@@ -129,7 +141,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   Widget build(BuildContext context) {
     final reports = Provider.of<ReportsProvider>(context);
     final data = reports.data;
-    final totalUsers = mockUsers.length;
+    final totalUsers = _totalUsers;
     final top = (data['topProducts'] as List?) ?? [];
     final revenue = (data['revenue'] ?? 0.0) as double;
     final monthly = (data['monthlyRevenue'] ?? []) as List<dynamic>;

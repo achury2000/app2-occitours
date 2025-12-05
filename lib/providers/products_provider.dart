@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/product.dart';
-import '../data/mock_products.dart';
 
 enum ProductSort { priceAsc, priceDesc, nameAsc, popularity }
 
@@ -46,10 +45,10 @@ class ProductsProvider with ChangeNotifier {
       try {
         _allItems = Product.decodeList(raw);
       } catch (_) {
-        _allItems = List.from(mockProducts);
+        _allItems = [];
       }
     } else {
-      _allItems = List.from(mockProducts);
+      _allItems = [];
       await _saveToPrefs();
     }
     // load stock history

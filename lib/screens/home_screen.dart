@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/products_provider.dart';
-import '../data/mock_products.dart' as mock_data;
 import 'product_detail_screen.dart';
 import 'routes_screen.dart';
 import 'fincas_screen.dart';
@@ -144,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   SizedBox(height:8),
                   // Rutas carousel (existing)
                   Builder(builder: (ctx){
-                    final rutas = mock_data.mockProducts.where((p)=>p.category=='Rutas').toList();
+                    final rutas = products.items.where((p)=>p.category=='Rutas').toList();
                     rutas.sort((a,b)=>b.popularity.compareTo(a.popularity));
                     final list = rutas.take(4).toList();
                     return SizedBox(
@@ -198,7 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text('Fincas recomendadas', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
                   SizedBox(height:8),
                   Builder(builder: (ctx){
-                    final fincas = mock_data.mockProducts.where((p)=>p.category=='Fincas').toList();
+                    final fincas = products.items.where((p)=>p.category=='Fincas').toList();
                     fincas.sort((a,b)=>b.popularity.compareTo(a.popularity));
                     final list = fincas.take(4).toList();
                     return SizedBox(

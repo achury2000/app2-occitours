@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/date_utils.dart';
-import '../data/mock_reservations.dart';
 
 /// Gestiona las reservas de la aplicación.
 ///
@@ -39,14 +38,14 @@ class ReservationsProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefsKey);
     if (raw == null) {
-      _reservations = List<Map<String,dynamic>>.from(mockReservations);
+      _reservations = [];
       await _saveToPrefs();
     } else {
       try {
         final decoded = jsonDecode(raw) as List<dynamic>;
         _reservations = decoded.map((e) => Map<String,dynamic>.from(e as Map)).toList();
       } catch (e) {
-        _reservations = List<Map<String,dynamic>>.from(mockReservations);
+        _reservations = [];
       }
     }
     _loading = false;
@@ -198,15 +197,7 @@ class ReservationsProvider with ChangeNotifier {
     await _saveToPrefs(); await _saveAuditToPrefs(); notifyListeners();
   }
 
-  /// Replace current reservations with the default mock data and persist.
-  Future<void> resetToMock({bool confirm = true}) async {
-    // El flag `confirm` se deja por compatibilidad de API; los llamadores pueden invocar sin confirmación
-    _reservations = List<Map<String,dynamic>>.from(mockReservations);
-    _audit.insert(0, {'action': 'reset_to_mock', 'count': _reservations.length, 'timestamp': DateTime.now().toIso8601String()});
-    await _saveToPrefs();
-    await _saveAuditToPrefs();
-    notifyListeners();
-  }
+
 
   List<Map<String,dynamic>> get audit => List.unmodifiable(_audit);
 

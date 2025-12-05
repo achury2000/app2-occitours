@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../data/mock_employees.dart';
 
 /// Proveedor para gestión de empleados.
 ///
@@ -23,9 +22,7 @@ class EmployeesProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefsKey);
     if (raw == null) {
-      _employees = mockEmployees.map((e) => Map<String,String>.fromEntries(
-        (e as Map).entries.map((kv) => MapEntry(kv.key.toString(), kv.value == null ? '' : kv.value.toString()))
-      )).toList();
+      _employees = [];
       await _saveToPrefs();
     } else {
       try {
@@ -34,9 +31,7 @@ class EmployeesProvider with ChangeNotifier {
           (e as Map).entries.map((kv) => MapEntry(kv.key.toString(), kv.value == null ? '' : kv.value.toString()))
         )).toList();
       } catch (e) {
-        _employees = mockEmployees.map((e) => Map<String,String>.fromEntries(
-          (e as Map).entries.map((kv) => MapEntry(kv.key.toString(), kv.value == null ? '' : kv.value.toString()))
-        )).toList();
+        _employees = [];
       }
     }
     notifyListeners();

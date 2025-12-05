@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../data/mock_clients.dart';
 
 /// Proveedor que gestiona los clientes y campañas relacionadas.
 ///
@@ -49,14 +48,14 @@ class ClientsProvider with ChangeNotifier {
     final rawCampaigns = prefs.getString(_campaignsKey);
     final rawAudit = prefs.getString(_auditKey);
     if (rawClients == null) {
-      _clients = List<Map<String, dynamic>>.from(mockClients);
+      _clients = [];
       await _saveClients();
     } else {
       try {
         final decoded = jsonDecode(rawClients) as List<dynamic>;
         _clients = decoded.map((e) => Map<String, dynamic>.from(e as Map)).toList();
       } catch (e) {
-        _clients = List<Map<String, dynamic>>.from(mockClients);
+        _clients = [];
       }
     }
 

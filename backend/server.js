@@ -33,16 +33,19 @@ app.use((req, res) => {
   });
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
+// Iniciar servidor en 0.0.0.0 para permitir conexiones desde emulador Android
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📚 Endpoints disponibles:`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/login`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/register`);
-  console.log(`   GET  http://localhost:${PORT}/api/auth/profile`);
-  console.log(`   GET  http://localhost:${PORT}/api/auth/users (admin)`);
-  console.log(`   GET  http://localhost:${PORT}/api/auth/users/public (público)`);
-  console.log(`   POST http://localhost:${PORT}/api/auth/logout\n`);
+  console.log(`   POST   http://localhost:${PORT}/api/auth/login`);
+  console.log(`   POST   http://localhost:${PORT}/api/auth/register`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/profile`);
+  console.log(`   POST   http://localhost:${PORT}/api/auth/logout`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/users (admin)`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/users/:id (admin)`);
+  console.log(`   PUT    http://localhost:${PORT}/api/auth/users/:id (admin/propio)`);
+  console.log(`   DELETE http://localhost:${PORT}/api/auth/users/:id (admin)`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/users/public (público)\n`);
 });
 
 module.exports = app;

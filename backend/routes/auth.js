@@ -300,5 +300,226 @@ router.get('/users/public', async (req, res) => {
   }
 });
 
+// ================================================
+// GET /api/auth/users/:id - Obtener usuario por ID (admin)
+// ================================================
+router.get('/users/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await db.query(
+      `SELECT u.id, u.nombre, u.apellido, u.cedula, u.email, 
+              u.activo, u.fecha_registro, r.nombre as rol, u.rol_id
+       FROM usuarios u
+       INNER JOIN roles r ON u.rol_id = r.id
+       WHERE u.id = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Usuario no encontrado',
+        message: `No existe un usuario con ID ${id}` 
+      });
+    }
+
+    res.json({
+      success: true,
+      usuario: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error obteniendo usuario:', error);
+    res.status(500).json({ 
+      error: 'Error en el servidor',
+      message: error.message 
+    });
+  }
+});
+
+// ================================================
+// PUT /api/auth/users/:id - Actualizar usuario (admin o el mismo usuario)
+// ================================================
+router.put('/users/:id', verificarToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, apellido, email, telefono, activo, rol_id } = req.body;
+
+    // Verificar permisos: solo admin o el propio usuario puede actualizar
+    const esAdmin = req.usuario.rol_nombre === 'admin';
+    const esElMismoUsuario = req.usuario.id == id;
+
+    if (!esAdmin && !esElMismoUsuario) {
+      return res.status(403).json({ 
+        error: 'Acceso denegado',
+        message: 'No tienes permisos para actualizar este usuario' 
+      });
+    }
+
+    // Si no es admin, no puede cambiar rol ni estado activo
+    if (!esAdmin && (rol_id !== undefined || activo !== undefined)) {
+      return res.status(403).json({ 
+        error: 'Acceso denegado',
+        message: 'No puedes cambiar el rol o estado de activación' 
+      });
+    }
+
+    // Verificar que el usuario existe
+    const usuarioExiste = await db.query(
+      'SELECT id FROM usuarios WHERE id = $1',
+      [id]
+    );
+    if (usuarioExiste.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Usuario no encontrado',
+        message: `No existe un usuario con ID ${id}` 
+      });
+    }
+
+    // Verificar si el nuevo email ya existe (si se está cambiando)
+    if (email) {
+      const emailExiste = await db.query(
+        'SELECT id FROM usuarios WHERE email = $1 AND id != $2',
+        [email, id]
+      );
+      if (emailExiste.rows.length > 0) {
+        return res.status(409).json({ 
+          error: 'Email duplicado',
+          message: 'Este email ya está siendo usado por otro usuario' 
+        });
+      }
+    }
+
+    // Construir query dinámicamente
+    const campos = [];
+    const valores = [];
+    let contador = 1;
+
+    if (nombre !== undefined) {
+      campos.push(`nombre = $${contador}`);
+      valores.push(nombre);
+      contador++;
+    }
+    if (apellido !== undefined) {
+      campos.push(`apellido = $${contador}`);
+      valores.push(apellido);
+      contador++;
+    }
+    if (email !== undefined) {
+      campos.push(`email = $${contador}`);
+      valores.push(email);
+      contador++;
+    }
+    if (activo !== undefined && esAdmin) {
+      campos.push(`activo = $${contador}`);
+      valores.push(activo);
+      contador++;
+    }
+    if (rol_id !== undefined && esAdmin) {
+      campos.push(`rol_id = $${contador}`);
+      valores.push(rol_id);
+      contador++;
+    }
+
+    if (campos.length === 0) {
+      return res.status(400).json({ 
+        error: 'No hay campos para actualizar',
+        message: 'Debes proporcionar al menos un campo para actualizar' 
+      });
+    }
+
+    valores.push(id);
+    const query = `
+      UPDATE usuarios 
+      SET ${campos.join(', ')}
+      WHERE id = $${contador}
+      RETURNING id, nombre, apellido, cedula, email, activo
+    `;
+
+    const result = await db.query(query, valores);
+
+    // Si se actualizó el email, actualizar también en tabla clientes
+    if (email) {
+      await db.query(
+        'UPDATE clientes SET email = $1 WHERE cedula = (SELECT cedula FROM usuarios WHERE id = $2)',
+        [email, id]
+      );
+    }
+
+    res.json({
+      success: true,
+      message: 'Usuario actualizado exitosamente',
+      usuario: result.rows[0]
+    });
+
+  } catch (error) {
+    console.error('Error actualizando usuario:', error);
+    res.status(500).json({ 
+      error: 'Error en el servidor',
+      message: error.message 
+    });
+  }
+});
+
+// ================================================
+// DELETE /api/auth/users/:id - Eliminar usuario (solo admin)
+// ================================================
+router.delete('/users/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verificar que el usuario existe
+    const usuarioExiste = await db.query(
+      'SELECT id, cedula FROM usuarios WHERE id = $1',
+      [id]
+    );
+    if (usuarioExiste.rows.length === 0) {
+      return res.status(404).json({ 
+        error: 'Usuario no encontrado',
+        message: `No existe un usuario con ID ${id}` 
+      });
+    }
+
+    // No permitir que el admin se elimine a sí mismo
+    if (req.usuario.id == id) {
+      return res.status(400).json({ 
+        error: 'Operación no permitida',
+        message: 'No puedes eliminar tu propia cuenta' 
+      });
+    }
+
+    const cedula = usuarioExiste.rows[0].cedula;
+
+    // Eliminar el usuario (las FKs deben manejarse según tu esquema)
+    // Primero intentar eliminar de clientes si existe
+    await db.query('DELETE FROM clientes WHERE cedula = $1', [cedula]);
+    
+    // Luego eliminar el usuario
+    await db.query('DELETE FROM usuarios WHERE id = $1', [id]);
+
+    res.json({
+      success: true,
+      message: 'Usuario eliminado exitosamente',
+      id: parseInt(id)
+    });
+
+  } catch (error) {
+    console.error('Error eliminando usuario:', error);
+    
+    // Manejar errores de foreign key
+    if (error.code === '23503') {
+      return res.status(409).json({ 
+        error: 'No se puede eliminar',
+        message: 'El usuario tiene registros relacionados. Considera desactivarlo en lugar de eliminarlo.' 
+      });
+    }
+
+    res.status(500).json({ 
+      error: 'Error en el servidor',
+      message: error.message 
+    });
+  }
+});
+
 module.exports = router;
 

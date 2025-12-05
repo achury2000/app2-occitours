@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../data/mock_roles.dart';
 
 /// Proveedor para roles y permisos del sistema.
 ///
@@ -24,14 +23,14 @@ class RolesProvider with ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_prefsKey);
     if (raw == null) {
-      _roles = List<Map<String,dynamic>>.from(mockRoles);
+      _roles = [];
       await _saveToPrefs();
     } else {
       try {
         final decoded = jsonDecode(raw) as List<dynamic>;
         _roles = decoded.map((e) => Map<String,dynamic>.from(e as Map)).toList();
       } catch (e) {
-        _roles = List<Map<String,dynamic>>.from(mockRoles);
+        _roles = [];
       }
     }
     // load audit log if present
