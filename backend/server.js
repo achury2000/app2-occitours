@@ -12,7 +12,11 @@ app.use(express.urlencoded({ extended: true }));
 
 // Rutas
 const authRoutes = require('./routes/auth');
+const rolesRoutes = require('./routes/roles');
+const reservasRoutes = require('./routes/reservas');
 app.use('/api/auth', authRoutes);
+app.use('/api/roles', rolesRoutes);
+app.use('/api/reservas', reservasRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -36,16 +40,31 @@ app.use((req, res) => {
 // Iniciar servidor en 0.0.0.0 para permitir conexiones desde emulador Android
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Servidor corriendo en http://localhost:${PORT}`);
-  console.log(`📚 Endpoints disponibles:`);
+  console.log(`📚 Endpoints disponibles (TODOS PÚBLICOS):`);
+  console.log(`\n   === AUTENTICACIÓN ===`);
   console.log(`   POST   http://localhost:${PORT}/api/auth/login`);
   console.log(`   POST   http://localhost:${PORT}/api/auth/register`);
-  console.log(`   GET    http://localhost:${PORT}/api/auth/profile`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/profile?id=X`);
   console.log(`   POST   http://localhost:${PORT}/api/auth/logout`);
-  console.log(`   GET    http://localhost:${PORT}/api/auth/users (admin)`);
-  console.log(`   GET    http://localhost:${PORT}/api/auth/users/:id (admin)`);
-  console.log(`   PUT    http://localhost:${PORT}/api/auth/users/:id (admin/propio)`);
-  console.log(`   DELETE http://localhost:${PORT}/api/auth/users/:id (admin)`);
-  console.log(`   GET    http://localhost:${PORT}/api/auth/users/public (público)\n`);
+  console.log(`\n   === USUARIOS ===`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/users`);
+  console.log(`   GET    http://localhost:${PORT}/api/auth/users/:id`);
+  console.log(`   PUT    http://localhost:${PORT}/api/auth/users/:id`);
+  console.log(`   DELETE http://localhost:${PORT}/api/auth/users/:id`);
+  console.log(`\n   === ROLES ===`);
+  console.log(`   GET    http://localhost:${PORT}/api/roles`);
+  console.log(`   GET    http://localhost:${PORT}/api/roles/:id`);
+  console.log(`   POST   http://localhost:${PORT}/api/roles`);
+  console.log(`   PUT    http://localhost:${PORT}/api/roles/:id`);
+  console.log(`   DELETE http://localhost:${PORT}/api/roles/:id`);
+  console.log(`\n   === RESERVAS ===`);
+  console.log(`   GET    http://localhost:${PORT}/api/reservas`);
+  console.log(`   GET    http://localhost:${PORT}/api/reservas/:id`);
+  console.log(`   POST   http://localhost:${PORT}/api/reservas`);
+  console.log(`   PUT    http://localhost:${PORT}/api/reservas/:id`);
+  console.log(`   DELETE http://localhost:${PORT}/api/reservas/:id`);
+  console.log(`   GET    http://localhost:${PORT}/api/reservas/cliente/:cliente_id\n`);
+  console.log(`✅ Conectado a PostgreSQL`);
 });
 
 module.exports = app;

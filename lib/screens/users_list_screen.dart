@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 
 class UsersListScreen extends StatefulWidget {
@@ -87,12 +85,6 @@ class _UsersListScreenState extends State<UsersListScreen> {
   Future<void> _actualizarRol(
       Map<String, dynamic> usuario, String nuevoRolLabel) async {
     try {
-      // Obtener token del AuthProvider
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      if (auth.token != null) {
-        _apiService.setToken(auth.token);
-      }
-
       final rolId = _obtenerRolId(nuevoRolLabel);
       await _apiService.updateUser(usuario['id'].toString(), {'rol_id': rolId});
 
@@ -135,12 +127,6 @@ class _UsersListScreenState extends State<UsersListScreen> {
 
     if (confirm == true) {
       try {
-        // Obtener token del AuthProvider
-        final auth = Provider.of<AuthProvider>(context, listen: false);
-        if (auth.token != null) {
-          _apiService.setToken(auth.token);
-        }
-
         await _apiService.deleteUser(usuario['id'].toString());
 
         ScaffoldMessenger.of(context).showSnackBar(

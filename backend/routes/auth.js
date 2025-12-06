@@ -200,8 +200,17 @@ router.post('/register', async (req, res) => {
 // ================================================
 // GET /api/auth/profile - Perfil del usuario
 // ================================================
-router.get('/profile', verificarToken, async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
+    // Sin autenticación - retornar usuario por ID si se proporciona
+    const userId = req.query.id || req.body.id;
+    if (!userId) {
+      return res.status(400).json({ 
+        error: 'ID requerido',
+        message: 'Debes proporcionar el ID del usuario' 
+      });
+    }
+
     const result = await db.query(
       `SELECT u.id, u.nombre, u.apellido, u.cedula, u.email, 
               u.activo, u.fecha_registro,
@@ -209,7 +218,7 @@ router.get('/profile', verificarToken, async (req, res) => {
        FROM usuarios u
        INNER JOIN roles r ON u.rol_id = r.id
        WHERE u.id = $1`,
-      [req.usuario.id]
+      [userId]
     );
 
     if (result.rows.length === 0) {
@@ -235,7 +244,7 @@ router.get('/profile', verificarToken, async (req, res) => {
 // ================================================
 // POST /api/auth/logout - Cerrar sesión
 // ================================================
-router.post('/logout', verificarToken, (req, res) => {
+router.post('/logout', (req, res) => {
   // En JWT no hay sesión en servidor, solo informamos al cliente
   // El cliente debe eliminar el token
   res.json({
@@ -245,9 +254,9 @@ router.post('/logout', verificarToken, (req, res) => {
 });
 
 // ================================================
-// GET /api/auth/users - Listar todos los usuarios (solo admin)
+// GET /api/auth/users - Listar todos los usuarios (público)
 // ================================================
-router.get('/users', verificarToken, verificarRol(['admin']), async (req, res) => {
+router.get('/users', async (req, res) => {
   try {
     const result = await db.query(
       `SELECT u.id, u.nombre, u.apellido, u.cedula, u.email, 
@@ -273,37 +282,9 @@ router.get('/users', verificarToken, verificarRol(['admin']), async (req, res) =
 });
 
 // ================================================
-// GET /api/auth/users/public - Listar usuarios (público, sin auth)
+// GET /api/auth/users/:id - Obtener usuario por ID (público)
 // ================================================
-router.get('/users/public', async (req, res) => {
-  try {
-    const result = await db.query(
-      `SELECT u.id, u.nombre, u.apellido, u.cedula, u.email, 
-              u.activo, r.nombre as rol
-       FROM usuarios u
-       INNER JOIN roles r ON u.rol_id = r.id
-       ORDER BY u.id DESC`
-    );
-
-    res.json({
-      success: true,
-      usuarios: result.rows,
-      total: result.rows.length
-    });
-
-  } catch (error) {
-    console.error('Error obteniendo usuarios:', error);
-    res.status(500).json({ 
-      error: 'Error en el servidor',
-      message: error.message 
-    });
-  }
-});
-
-// ================================================
-// GET /api/auth/users/:id - Obtener usuario por ID (admin)
-// ================================================
-router.get('/users/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
+router.get('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -338,38 +319,16 @@ router.get('/users/:id', verificarToken, verificarRol(['admin']), async (req, re
 });
 
 // ================================================
-// PUT /api/auth/users/:id - Actualizar usuario (admin o el mismo usuario)
+// PUT /api/auth/users/:id - Actualizar usuario (público)
 // ================================================
-router.put('/users/:id', verificarToken, async (req, res) => {
+router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, apellido, email, telefono, activo, rol_id } = req.body;
 
-    console.log('🔧 PUT /users/:id - Usuario autenticado:', req.usuario);
+    console.log('🔧 PUT /users/:id - Sin autenticación');
     console.log('   ID a actualizar:', id);
     console.log('   Cambios:', { nombre, apellido, email, telefono, activo, rol_id });
-
-    // Verificar permisos: solo admin o el propio usuario puede actualizar
-    const esAdmin = req.usuario.rol_nombre === 'admin';
-    const esElMismoUsuario = req.usuario.id == id;
-
-    console.log('   Es admin?', esAdmin);
-    console.log('   Es el mismo usuario?', esElMismoUsuario);
-
-    if (!esAdmin && !esElMismoUsuario) {
-      return res.status(403).json({ 
-        error: 'Acceso denegado',
-        message: 'No tienes permisos para actualizar este usuario' 
-      });
-    }
-
-    // Si no es admin, no puede cambiar rol ni estado activo
-    if (!esAdmin && (rol_id !== undefined || activo !== undefined)) {
-      return res.status(403).json({ 
-        error: 'Acceso denegado',
-        message: 'No puedes cambiar el rol o estado de activación' 
-      });
-    }
 
     // Verificar que el usuario existe
     const usuarioExiste = await db.query(
@@ -417,12 +376,12 @@ router.put('/users/:id', verificarToken, async (req, res) => {
       valores.push(email);
       contador++;
     }
-    if (activo !== undefined && esAdmin) {
+    if (activo !== undefined) {
       campos.push(`activo = $${contador}`);
       valores.push(activo);
       contador++;
     }
-    if (rol_id !== undefined && esAdmin) {
+    if (rol_id !== undefined) {
       campos.push(`rol_id = $${contador}`);
       valores.push(rol_id);
       contador++;
@@ -469,13 +428,13 @@ router.put('/users/:id', verificarToken, async (req, res) => {
 });
 
 // ================================================
-// DELETE /api/auth/users/:id - Eliminar usuario (solo admin)
+// DELETE /api/auth/users/:id - Eliminar usuario (público)
 // ================================================
-router.delete('/users/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log('🗑️  DELETE /users/:id - Usuario autenticado:', req.usuario);
+    console.log('🗑️  DELETE /users/:id - Sin autenticación');
     console.log('   ID a eliminar:', id);
 
     // Verificar que el usuario existe
@@ -487,14 +446,6 @@ router.delete('/users/:id', verificarToken, verificarRol(['admin']), async (req,
       return res.status(404).json({ 
         error: 'Usuario no encontrado',
         message: `No existe un usuario con ID ${id}` 
-      });
-    }
-
-    // No permitir que el admin se elimine a sí mismo
-    if (req.usuario.id == id) {
-      return res.status(400).json({ 
-        error: 'Operación no permitida',
-        message: 'No puedes eliminar tu propia cuenta' 
       });
     }
 

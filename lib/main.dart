@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'theme/app_theme.dart'; 
+import 'theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/products_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/reports_provider.dart';
-import 'providers/employees_provider.dart';
 import 'providers/roles_provider.dart';
 import 'providers/users_provider.dart';
 import 'providers/reservations_provider.dart';
 import 'providers/clients_provider.dart';
 import 'providers/suppliers_provider.dart';
-import 'providers/purchases_provider.dart';
 import 'providers/services_provider.dart';
 import 'providers/fincas_provider.dart';
 import 'providers/routes_provider.dart';
@@ -32,9 +30,6 @@ import 'screens/user_form_screen.dart';
 import 'screens/recover_password_screen.dart';
 import 'screens/logout_screen.dart';
 import 'widgets/auth_guard.dart';
-import 'screens/employees_list_screen.dart';
-import 'screens/employee_detail_screen.dart';
-import 'screens/employee_form_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/services_list_screen.dart';
@@ -80,7 +75,6 @@ import 'screens/dashboard_statistics_screen.dart';
 import 'screens/dashboard_reports_screen.dart';
 import 'screens/dashboard_indicators_screen.dart';
 import 'screens/admin_dashboard_screen.dart';
-import 'screens/audit_screen.dart';
 // duplicate payment imports removed (already imported earlier)
 import 'screens/admin_analytics_screen.dart';
 import 'screens/reservations_flow_screen.dart';
@@ -90,14 +84,10 @@ import 'screens/access_denied_screen.dart';
 import 'screens/suppliers_list_screen.dart';
 import 'screens/supplier_form_screen.dart';
 import 'screens/supplier_detail_screen.dart';
-import 'screens/purchases_list_screen.dart';
-import 'screens/purchase_create_screen.dart';
-import 'screens/purchase_detail_screen.dart';
 import 'screens/sales_list_client_screen.dart';
 import 'screens/sale_detail_screen.dart';
 import 'screens/sale_form_screen.dart';
 import 'screens/low_stock_screen.dart';
-import 'screens/products_csv_screen.dart';
 import 'screens/service_detail_screen.dart';
 import 'screens/services_agenda_screen.dart';
 
@@ -110,7 +100,8 @@ class OccitoursApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // helper to build guarded routes succinctly
-    WidgetBuilder guarded(List<String> roles, Widget child) => (ctx) => AuthGuard(allowedRoles: roles, child: child);
+    WidgetBuilder guarded(List<String> roles, Widget child) =>
+        (ctx) => AuthGuard(allowedRoles: roles, child: child);
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
@@ -128,10 +119,8 @@ class OccitoursApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ClientsProvider()),
         ChangeNotifierProvider(create: (_) => ReportsProvider()),
         ChangeNotifierProvider(create: (_) => RolesProvider()),
-        ChangeNotifierProvider(create: (_) => EmployeesProvider()),
         ChangeNotifierProvider(create: (_) => ReservationsProvider()),
         ChangeNotifierProvider(create: (_) => SuppliersProvider()),
-        ChangeNotifierProvider(create: (_) => PurchasesProvider()),
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -148,13 +137,14 @@ class OccitoursApp extends StatelessWidget {
           '/fincas/edit': (ctx) => FincaFormScreen(),
           FincaDetailScreen.routeName: (ctx) => FincaDetailScreen(),
           LoginScreen.routeName: (ctx) => LoginScreen(),
-            RegisterScreen.routeName: (ctx) => RegisterScreen(),
+          RegisterScreen.routeName: (ctx) => RegisterScreen(),
           ProductsScreen.routeName: (ctx) => ProductsScreen(),
           RolesListScreen.routeName: guarded(['admin'], RolesListScreen()),
           '/roles/create': guarded(['admin'], RoleFormScreen()),
           '/roles/edit': guarded(['admin'], RoleFormScreen()),
           RoleDetailScreen.routeName: guarded(['admin'], RoleDetailScreen()),
-          AssignPermissionsScreen.routeName: guarded(['admin'], AssignPermissionsScreen()),
+          AssignPermissionsScreen.routeName:
+              guarded(['admin'], AssignPermissionsScreen()),
           UsersListScreen.routeName: guarded(['admin'], UsersListScreen()),
           UserDetailScreen.routeName: guarded(['admin'], UserDetailScreen()),
           UserFormScreen.routeName: guarded(['admin'], UserFormScreen()),
@@ -162,10 +152,6 @@ class OccitoursApp extends StatelessWidget {
           '/users/edit': guarded(['admin'], UserFormScreen()),
           RecoverPasswordScreen.routeName: (ctx) => RecoverPasswordScreen(),
           LogoutScreen.routeName: (ctx) => LogoutScreen(),
-          EmployeesListScreen.routeName: guarded(['admin'], EmployeesListScreen()),
-          EmployeeDetailScreen.routeName: guarded(['admin'], EmployeeDetailScreen()),
-          '/employees/create': guarded(['admin'], EmployeeFormScreen()),
-          '/employees/edit': guarded(['admin'], EmployeeFormScreen()),
           ProductDetailScreen.routeName: (ctx) => ProductDetailScreen(),
           RoutesManageScreen.routeName: (ctx) => RoutesManageScreen(),
           '/rutas/create': (ctx) => RouteFormScreen(),
@@ -177,59 +163,81 @@ class OccitoursApp extends StatelessWidget {
           ServiceDetailScreen.routeName: (ctx) => ServiceDetailScreen(),
           ServicesAgendaScreen.routeName: (ctx) => ServicesAgendaScreen(),
           ReservationsFlowScreen.routeName: (ctx) => ReservationsFlowScreen(),
-          ReservationsListScreen.routeName: guarded(['admin','asesor','advisor'], ReservationsListScreen()),
-          ReservationsCreateScreen.routeName: guarded(['admin'], ReservationsCreateScreen()),
+          ReservationsListScreen.routeName:
+              guarded(['admin', 'asesor', 'advisor'], ReservationsListScreen()),
+          ReservationsCreateScreen.routeName:
+              guarded(['admin'], ReservationsCreateScreen()),
           ReservationsEditScreen.routeName: (ctx) {
             // This screen needs custom logic: allow admins and clients (screen validates ownership)
             final auth = Provider.of<AuthProvider>(ctx, listen: false);
             final role = (auth.user?.role ?? '').toLowerCase();
-            if (role == 'admin' || role == 'cliente' || role == 'client') return ReservationsEditScreen();
+            if (role == 'admin' || role == 'cliente' || role == 'client')
+              return ReservationsEditScreen();
             return AccessDeniedScreen();
           },
-          ReservationsCancelScreen.routeName: guarded(['admin'], ReservationsCancelScreen()),
-          ReservationDetailScreen.routeName: guarded(['admin','asesor','advisor','cliente','client'], ReservationDetailScreen()),
-          AdvisorDashboardScreen.routeName: guarded(['asesor','advisor','admin'], AdvisorDashboardScreen()),
-          ClientHomeScreen.routeName: guarded(['cliente','client'], ClientHomeScreen()),
+          ReservationsCancelScreen.routeName:
+              guarded(['admin'], ReservationsCancelScreen()),
+          ReservationDetailScreen.routeName: guarded(
+              ['admin', 'asesor', 'advisor', 'cliente', 'client'],
+              ReservationDetailScreen()),
+          AdvisorDashboardScreen.routeName:
+              guarded(['asesor', 'advisor', 'admin'], AdvisorDashboardScreen()),
+          ClientHomeScreen.routeName:
+              guarded(['cliente', 'client'], ClientHomeScreen()),
           ClientsRegisterScreen.routeName: (ctx) => ClientsRegisterScreen(),
           ClientsListScreen.routeName: guarded(['admin'], ClientsListScreen()),
-          ClientDetailScreen.routeName: guarded(['admin','cliente','client'], ClientDetailScreen()),
-          ClientsSegmentationScreen.routeName: (ctx) => ClientsSegmentationScreen(),
+          ClientDetailScreen.routeName:
+              guarded(['admin', 'cliente', 'client'], ClientDetailScreen()),
+          ClientsSegmentationScreen.routeName: (ctx) =>
+              ClientsSegmentationScreen(),
           ClientsCampaignsScreen.routeName: (ctx) => ClientsCampaignsScreen(),
           ClientsHistoryScreen.routeName: (ctx) => ClientsHistoryScreen(),
-          DashboardSatisfactionScreen.routeName: (ctx) => DashboardSatisfactionScreen(),
-          DashboardStatisticsScreen.routeName: (ctx) => DashboardStatisticsScreen(),
+          DashboardSatisfactionScreen.routeName: (ctx) =>
+              DashboardSatisfactionScreen(),
+          DashboardStatisticsScreen.routeName: (ctx) =>
+              DashboardStatisticsScreen(),
           DashboardReportsScreen.routeName: (ctx) => DashboardReportsScreen(),
-          DashboardIndicatorsScreen.routeName: (ctx) => DashboardIndicatorsScreen(),
-          AdminDashboardScreen.routeName: guarded(['admin'], AdminDashboardScreen()),
-          AdminAnalyticsScreen.routeName: guarded(['admin'], AdminAnalyticsScreen()),
+          DashboardIndicatorsScreen.routeName: (ctx) =>
+              DashboardIndicatorsScreen(),
+          AdminDashboardScreen.routeName:
+              guarded(['admin'], AdminDashboardScreen()),
+          AdminAnalyticsScreen.routeName:
+              guarded(['admin'], AdminAnalyticsScreen()),
           // parte linsaith
-          AuditScreen.routeName: guarded(['admin'], AuditScreen()),
-          PaymentsListScreen.routeName: guarded(['admin'], PaymentsListScreen()),
+          PaymentsListScreen.routeName:
+              guarded(['admin'], PaymentsListScreen()),
           '/payments/create': guarded(['admin'], PaymentCreateScreen()),
-          PaymentDetailScreen.routeName: guarded(['admin'], PaymentDetailScreen()),
-          ItinerariesListScreen.routeName: guarded(['admin'], ItinerariesListScreen()),
+          PaymentDetailScreen.routeName:
+              guarded(['admin'], PaymentDetailScreen()),
+          ItinerariesListScreen.routeName:
+              guarded(['admin'], ItinerariesListScreen()),
           '/itineraries/create': guarded(['admin'], ItineraryCreateScreen()),
-          '/itineraries/detail': guarded(['admin'], ItineraryDetailScreen(itineraryId: '')),
-          InvoicesListScreen.routeName: guarded(['admin'], InvoicesListScreen()),
+          '/itineraries/detail':
+              guarded(['admin'], ItineraryDetailScreen(itineraryId: '')),
+          InvoicesListScreen.routeName:
+              guarded(['admin'], InvoicesListScreen()),
           '/invoices/create': guarded(['admin'], InvoiceCreateScreen()),
-          '/invoices/detail': guarded(['admin'], InvoiceDetailScreen(invoiceId: '')),
-          SuppliersListScreen.routeName: guarded(['admin'], SuppliersListScreen()),
+          '/invoices/detail':
+              guarded(['admin'], InvoiceDetailScreen(invoiceId: '')),
+          SuppliersListScreen.routeName:
+              guarded(['admin'], SuppliersListScreen()),
           '/suppliers/create': guarded(['admin'], SupplierFormScreen()),
           '/suppliers/edit': guarded(['admin'], SupplierFormScreen()),
           '/suppliers/detail': guarded(['admin'], SupplierDetailScreen()),
-          PurchasesListScreen.routeName: guarded(['admin'], PurchasesListScreen()),
-          PurchaseCreateScreen.routeName: guarded(['admin'], PurchaseCreateScreen()),
-          '/purchases/detail': guarded(['admin'], PurchaseDetailScreen()),
-          SalesListClientScreen.routeName: guarded(['cliente','client'], SalesListClientScreen()),
-          SaleDetailScreen.routeName: guarded(['cliente','client','asesor','advisor','admin'], SaleDetailScreen()),
-          SaleFormScreen.routeName: guarded(['asesor','advisor','admin'], SaleFormScreen()),
+          SalesListClientScreen.routeName:
+              guarded(['cliente', 'client'], SalesListClientScreen()),
+          SaleDetailScreen.routeName: guarded(
+              ['cliente', 'client', 'asesor', 'advisor', 'admin'],
+              SaleDetailScreen()),
+          SaleFormScreen.routeName:
+              guarded(['asesor', 'advisor', 'admin'], SaleFormScreen()),
           LowStockScreen.routeName: guarded(['admin'], LowStockScreen()),
-          ProductsCsvScreen.routeName: guarded(['admin'], ProductsCsvScreen()),
           CartScreen.routeName: (ctx) => CartScreen(),
           ProfileScreen.routeName: (ctx) => ProfileScreen(),
           ReportsScreen.routeName: (ctx) => ReportsScreen(),
           ReviewsListScreen.routeName: (ctx) => ReviewsListScreen(),
-          '/reviews/create': guarded(['cliente','client'], ReviewCreateScreen()),
+          '/reviews/create':
+              guarded(['cliente', 'client'], ReviewCreateScreen()),
           '/reviews/detail': (ctx) => ReviewDetailScreen(reviewId: ''),
         },
       ),

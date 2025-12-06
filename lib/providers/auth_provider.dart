@@ -113,30 +113,23 @@ class AuthProvider with ChangeNotifier {
 
     final prefs = await SharedPreferences.getInstance();
     final storedToken = prefs.getString('token');
+    final userId = prefs.getString('userId');
+    final userName = prefs.getString('userName');
+    final userEmail = prefs.getString('userEmail');
+    final userRole = prefs.getString('userRole');
 
-    if (storedToken != null) {
-      try {
-        _token = storedToken;
-        _apiService.setToken(storedToken);
-
-        // Verificar si el token sigue válido obteniendo el perfil
-        final response = await _apiService.getProfile();
-
-        if (response['success'] == true) {
-          final userData = response['usuario'];
-          _user = User(
-            id: userData['id'].toString(),
-            name: '${userData['nombre']} ${userData['apellido']}',
-            email: userData['email'],
-            role: userData['rol'],
-            phone: '',
-            address: '',
-          );
-        }
-      } catch (e) {
-        // Token inválido o expirado, limpiar
-        await logout();
-      }
+    if (storedToken != null && userId != null) {
+      // Como los endpoints son públicos, simplemente restaurar desde SharedPreferences
+      _token = storedToken;
+      _apiService.setToken(storedToken);
+      _user = User(
+        id: userId,
+        name: userName ?? '',
+        email: userEmail ?? '',
+        role: userRole ?? '',
+        phone: '',
+        address: '',
+      );
     }
 
     _loading = false;

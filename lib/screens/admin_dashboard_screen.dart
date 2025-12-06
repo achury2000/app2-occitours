@@ -475,14 +475,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     drawerItem(Icons.person, 'Usuarios', '/users'),
                     drawerItem(Icons.security, 'Roles y Permisos', '/roles'),
                     drawerItem(
-                        Icons.work, 'Gestión de empleados', '/employees'),
-                    drawerItem(
                         Icons.calendar_today, 'Reservas', '/reservations'),
                     drawerItem(Icons.analytics, 'Dashboard Analítico',
                         '/admin/analytics'),
                     drawerItem(
                         Icons.insert_chart_outlined, 'Informes', '/reports'),
-                    drawerItem(Icons.history, 'Auditoría', '/audit'),
                     drawerItem(
                         Icons.payment, 'Pagos a proveedores', '/payments'),
                     drawerItem(Icons.store, 'Proveedores', '/suppliers'),
@@ -497,11 +494,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         Navigator.of(context).pushNamed('/products/lowstock');
                       },
                     ),
-                    drawerItem(Icons.file_upload, 'Importar/Exportar Productos',
-                        '/products/csv'),
-                    drawerItem(Icons.inventory_2, 'Compras', '/purchases'),
-                    drawerItem(Icons.playlist_add_check, 'Crear Compra',
-                        '/purchases/create'),
                   ],
                 ),
               ),

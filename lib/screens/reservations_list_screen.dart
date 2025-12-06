@@ -2,13 +2,8 @@
 // parte linsaith
 // parte juanjo
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'dart:async';
-// import '../data/mock_reservations.dart';
-import '../providers/reservations_provider.dart';
-import '../widgets/admin_only.dart';
-import '../providers/clients_provider.dart';
-import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class ReservationsListScreen extends StatefulWidget {
   static const routeName = '/reservations';
@@ -17,100 +12,213 @@ class ReservationsListScreen extends StatefulWidget {
 }
 
 class _ReservationsListScreenState extends State<ReservationsListScreen> {
-  String _filter = 'Activas';
+  String _filter = 'Todas';
   String _search = '';
   Timer? _debounce;
+  List<dynamic> _reservas = [];
+  bool _loading = true;
 
   @override
-  void dispose(){
-    try{ _debounce?.cancel(); } catch(_){}
+  void dispose() {
+    try {
+      _debounce?.cancel();
+    } catch (_) {}
     super.dispose();
   }
+
   @override
-  void initState(){
+  void initState() {
     super.initState();
+    _loadReservas();
+  }
+
+  Future<void> _loadReservas() async {
+    setState(() => _loading = true);
+    try {
+      final apiService = ApiService();
+      final data = await apiService.getReservas();
+      setState(() {
+        _reservas = data;
+        _loading = false;
+      });
+    } catch (e) {
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cargar reservas: $e')),
+      );
+    }
+  }
+
+  List<dynamic> _filteredReservas() {
+    var filtered = _reservas;
+
+    // Filtrar por estado
+    if (_filter != 'Todas') {
+      filtered = filtered
+          .where(
+              (r) => (r['estado'] ?? '').toLowerCase() == _filter.toLowerCase())
+          .toList();
+    }
+
+    // Filtrar por búsqueda
+    if (_search.isNotEmpty) {
+      final query = _search.toLowerCase();
+      filtered = filtered.where((r) {
+        final id = r['id'].toString().toLowerCase();
+        final fecha = (r['fecha'] ?? '').toString().toLowerCase();
+        final estado = (r['estado'] ?? '').toString().toLowerCase();
+        final clienteNombre =
+            (r['cliente_nombre'] ?? '').toString().toLowerCase();
+        final fincaNombre = (r['finca_nombre'] ?? '').toString().toLowerCase();
+        return id.contains(query) ||
+            fecha.contains(query) ||
+            estado.contains(query) ||
+            clienteNombre.contains(query) ||
+            fincaNombre.contains(query);
+      }).toList();
+    }
+
+    return filtered;
   }
 
   @override
   Widget build(BuildContext context) {
-    final prov = Provider.of<ReservationsProvider>(context);
-    final auth = Provider.of<AuthProvider>(context);
-    List<Map<String,dynamic>> filtered = prov.search(query: _search, status: _filter=='Todas'? null : _filter);
+    final filtered = _filteredReservas();
+
     return Scaffold(
-      appBar: AppBar(title: Text('Reservas'), actions:[
-        if (auth.hasAnyRole(['admin'])) IconButton(icon: Icon(Icons.download), onPressed: (){
-          final csv = prov.exportCsv();
-          showDialog(context: context, builder: (_){ return AlertDialog(title: Text('CSV de reservas'), content: SingleChildScrollView(child: SelectableText(csv)), actions: [TextButton(onPressed: ()=> Navigator.of(context).pop(), child: Text('Cerrar'))]); });
-        }),
-        if (auth.hasAnyRole(['admin'])) IconButton(icon: Icon(Icons.upload_file), onPressed: () async {
-          final ctrl = TextEditingController();
-          final res = await showDialog<bool>(context: context, builder: (_){
-            return AlertDialog(
-              title: Text('Importar CSV de reservas'),
-              content: SizedBox(width: 400, child: Column(mainAxisSize: MainAxisSize.min, children:[
-                Text('Pega el CSV abajo (encabezados deben coincidir)'),
-                SizedBox(height:8),
-                TextField(controller: ctrl, maxLines:8, decoration: InputDecoration(border: OutlineInputBorder()))
-              ])),
-              actions: [
-                TextButton(onPressed: ()=> Navigator.of(context).pop(false), child: Text('Cancelar')),
-                TextButton(onPressed: ()=> Navigator.of(context).pop(true), child: Text('Importar'))
-              ]
-            );
-          });
-          if (res == true) {
-            final csv = ctrl.text.trim();
-            if (csv.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('CSV vacío')));
-              return;
-            }
-            try {
-              final actor = {'id': auth.user?.id ?? '', 'name': auth.user?.name ?? ''};
-              await prov.importFromCsv(csv, replace: false, actor: actor);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Importado correctamente')));
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error al importar CSV')));
-            }
-          }
-        })
-      ]),
+      appBar: AppBar(
+        title: Text('Reservas'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.refresh),
+            onPressed: _loadReservas,
+          ),
+        ],
+      ),
       body: Padding(
         padding: EdgeInsets.all(12),
-        child: Column(children:[
-          Row(children:[
-            Expanded(child: DropdownButtonFormField<String>(initialValue: _filter, items: ['Activas','Completadas','Canceladas','Todas'].map((s)=> DropdownMenuItem(child: Text(s), value: s)).toList(), onChanged: (v)=> setState(()=> _filter = v ?? 'Activas'), decoration: InputDecoration(labelText: 'Filtrar por estado'))),
-              SizedBox(width:12),
-              AdminOnly(child: ElevatedButton(onPressed: ()=> Navigator.of(context).pushNamed('/reservations/create'), child: Text('Crear')))
-          ]),
-            SizedBox(height:8),
-            // Search field (debounced). Do not search empty input.
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _filter,
+                    items: ['Todas', 'Confirmada', 'Completada', 'Cancelada']
+                        .map((s) => DropdownMenuItem(child: Text(s), value: s))
+                        .toList(),
+                    onChanged: (v) => setState(() => _filter = v ?? 'Todas'),
+                    decoration:
+                        InputDecoration(labelText: 'Filtrar por estado'),
+                  ),
+                ),
+                SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () async {
+                    final result = await Navigator.of(context)
+                        .pushNamed('/reservations/create');
+                    if (result == true) {
+                      _loadReservas(); // Recargar después de crear
+                    }
+                  },
+                  child: Text('Crear'),
+                ),
+              ],
+            ),
+            SizedBox(height: 8),
             TextField(
-              decoration: InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Buscar por ID, servicio, fecha, estado...'),
-              onChanged: (v){
+              decoration: InputDecoration(
+                prefixIcon: Icon(Icons.search),
+                hintText: 'Buscar por ID, cliente, fecha, finca...',
+              ),
+              onChanged: (v) {
                 if (_debounce?.isActive ?? false) _debounce!.cancel();
-                _debounce = Timer(Duration(milliseconds: 400), (){
-                  setState(()=> _search = v.trim());
+                _debounce = Timer(Duration(milliseconds: 400), () {
+                  setState(() => _search = v.trim());
                 });
               },
-              onSubmitted: (v){ if (v.trim().isEmpty) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ingrese un criterio de búsqueda'))); },
             ),
-          SizedBox(height:12),
-          Expanded(child: ListView.separated(
-            itemCount: filtered.length,
-            separatorBuilder: (_,__)=>SizedBox(height:8),
-            itemBuilder: (ctx,i){
-              final r = filtered[i];
-              final clientName = Provider.of<ClientsProvider>(context).getById(r['clientId'] ?? '')?['name'];
-              return Card(child: ListTile(
-                title: Text('${r['service']}'),
-                subtitle: Text('${r['date']} • ${r['status']}${clientName!=null? ' • $clientName' : ''}'),
-                trailing: Icon(Icons.chevron_right),
-                onTap: ()=> Navigator.of(context).pushNamed('/reservations/detail', arguments: r)
-              ));
-            }
-          ))
-        ])
+            SizedBox(height: 12),
+            if (_loading)
+              Expanded(
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (filtered.isEmpty)
+              Expanded(
+                child: Center(
+                  child: Text('No se encontraron reservas'),
+                ),
+              )
+            else
+              Expanded(
+                child: ListView.separated(
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => SizedBox(height: 8),
+                  itemBuilder: (ctx, i) {
+                    final r = filtered[i];
+                    final fecha = r['fecha']?.toString().split('T')[0] ?? '';
+                    final clienteNombre = r['cliente_nombre'] ?? 'Sin cliente';
+                    final fincaNombre = r['finca_nombre'] ?? 'Sin finca';
+                    final estado = r['estado'] ?? '';
+                    final personas = r['numero_personas'] ?? 0;
+
+                    return Card(
+                      child: ListTile(
+                        title: Text('Reserva #${r['id']} - $clienteNombre'),
+                        subtitle: Text(
+                          '$fecha • $fincaNombre • $personas persona(s) • Estado: $estado',
+                        ),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _cancelarReserva(r['id']),
+                        ),
+                        onTap: () {
+                          // Navegar a detalle si existe la ruta
+                          // Navigator.of(context).pushNamed('/reservations/detail', arguments: r);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _cancelarReserva(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Cancelar Reserva'),
+        content: Text('¿Estás seguro de cancelar esta reserva?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Sí'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final apiService = ApiService();
+      await apiService.deleteReserva(id.toString());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Reserva cancelada')),
+      );
+      _loadReservas(); // Recargar lista
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al cancelar reserva: $e')),
+      );
+    }
   }
 }
