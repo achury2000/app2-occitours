@@ -31,9 +31,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
     });
 
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      _apiService.setToken(auth.token);
-
+      print('📡 Llamando a _apiService.getUsers() (endpoint público)...');
       final usuarios = await _apiService.getUsers();
 
       setState(() {
@@ -89,6 +87,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
   Future<void> _actualizarRol(
       Map<String, dynamic> usuario, String nuevoRolLabel) async {
     try {
+      // Obtener token del AuthProvider
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      if (auth.token != null) {
+        _apiService.setToken(auth.token);
+      }
+
       final rolId = _obtenerRolId(nuevoRolLabel);
       await _apiService.updateUser(usuario['id'].toString(), {'rol_id': rolId});
 
@@ -131,6 +135,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
 
     if (confirm == true) {
       try {
+        // Obtener token del AuthProvider
+        final auth = Provider.of<AuthProvider>(context, listen: false);
+        if (auth.token != null) {
+          _apiService.setToken(auth.token);
+        }
+
         await _apiService.deleteUser(usuario['id'].toString());
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -288,6 +298,15 @@ class _UsersListScreenState extends State<UsersListScreen> {
                   ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          // Navegar a registro y recargar lista cuando regrese
+          await Navigator.of(context).pushNamed('/register');
+          _cargarUsuarios();
+        },
+        child: Icon(Icons.person_add),
+        tooltip: 'Crear usuario',
       ),
     );
   }

@@ -50,6 +50,10 @@ class AuthProvider with ChangeNotifier {
         await prefs.setString('userName', _user!.name);
         await prefs.setString('userEmail', _user!.email);
         await prefs.setString('userRole', _user!.role);
+
+        print('💾 Sesión guardada en SharedPreferences');
+        print('   Token: ${_token?.substring(0, 20)}...');
+        print('   Usuario: ${_user!.email} (${_user!.role})');
       } else {
         _error = response['message'] ?? 'Error al iniciar sesión';
       }
@@ -147,6 +151,11 @@ class AuthProvider with ChangeNotifier {
     final userEmail = prefs.getString('userEmail');
     final userRole = prefs.getString('userRole');
 
+    print('🔄 Cargando sesión desde SharedPreferences...');
+    print('   Token existe: ${storedToken != null}');
+    print('   UserId: $userId');
+    print('   UserRole: $userRole');
+
     if (storedToken != null && userId != null) {
       _token = storedToken;
       _apiService.setToken(storedToken);
@@ -158,7 +167,10 @@ class AuthProvider with ChangeNotifier {
         phone: '',
         address: '',
       );
+      print('✅ Sesión restaurada: ${_user?.email} (${_user?.role})');
       notifyListeners();
+    } else {
+      print('❌ No hay sesión guardada');
     }
   }
 

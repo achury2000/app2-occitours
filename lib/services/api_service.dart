@@ -136,12 +136,12 @@ class ApiService {
   // USUARIOS (ADMIN)
   // ========================================
 
-  /// GET /api/auth/users - Listar todos los usuarios (solo admin)
+  /// GET /api/auth/users/public - Listar todos los usuarios (sin autenticación)
   Future<List<Map<String, dynamic>>> getUsers() async {
     try {
       final response = await http.get(
-        Uri.parse('$baseUrl/auth/users'),
-        headers: _getHeaders(requiresAuth: true),
+        Uri.parse('$baseUrl/auth/users/public'),
+        headers: _getHeaders(requiresAuth: false),
       );
 
       final data = jsonDecode(response.body);
