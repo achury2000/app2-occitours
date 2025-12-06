@@ -34,6 +34,11 @@ const verificarRol = (...rolesPermitidos) => {
       return res.status(403).json({ error: 'No autenticado' });
     }
 
+    console.log('🔍 Verificando rol:');
+    console.log('   Usuario:', req.usuario.email);
+    console.log('   Rol actual:', req.usuario.rol_nombre);
+    console.log('   Roles permitidos:', rolesPermitidos);
+
     if (!rolesPermitidos.includes(req.usuario.rol_nombre)) {
       return res.status(403).json({ 
         error: 'Acceso denegado',

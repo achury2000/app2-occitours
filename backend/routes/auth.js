@@ -345,9 +345,16 @@ router.put('/users/:id', verificarToken, async (req, res) => {
     const { id } = req.params;
     const { nombre, apellido, email, telefono, activo, rol_id } = req.body;
 
+    console.log('🔧 PUT /users/:id - Usuario autenticado:', req.usuario);
+    console.log('   ID a actualizar:', id);
+    console.log('   Cambios:', { nombre, apellido, email, telefono, activo, rol_id });
+
     // Verificar permisos: solo admin o el propio usuario puede actualizar
     const esAdmin = req.usuario.rol_nombre === 'admin';
     const esElMismoUsuario = req.usuario.id == id;
+
+    console.log('   Es admin?', esAdmin);
+    console.log('   Es el mismo usuario?', esElMismoUsuario);
 
     if (!esAdmin && !esElMismoUsuario) {
       return res.status(403).json({ 
@@ -467,6 +474,9 @@ router.put('/users/:id', verificarToken, async (req, res) => {
 router.delete('/users/:id', verificarToken, verificarRol(['admin']), async (req, res) => {
   try {
     const { id } = req.params;
+
+    console.log('🗑️  DELETE /users/:id - Usuario autenticado:', req.usuario);
+    console.log('   ID a eliminar:', id);
 
     // Verificar que el usuario existe
     const usuarioExiste = await db.query(
