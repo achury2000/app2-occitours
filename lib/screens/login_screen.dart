@@ -253,15 +253,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   SizedBox(height: 8),
                   Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                          'Cuentas de demostración (contraseña: 123456):',
+                      child: Text('Cuenta de demostración:',
                           style:
                               TextStyle(fontSize: 12, color: Colors.black54))),
                   SizedBox(height: 8),
                   Wrap(spacing: 12, runSpacing: 6, children: [
-                    _demoChip('Administrador', 'admin@occitours.com'),
-                    _demoChip('Asesor', 'asesor@occitours.com'),
-                    _demoChip('Cliente', 'cliente@demo.com'),
+                    _demoChip(
+                        'Administrador', 'admin@occitours.com', 'admin123'),
                   ])
                 ],
               )
@@ -287,14 +285,14 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _demoChip(String role, String email) {
+  Widget _demoChip(String role, String email, String password) {
     return ActionChip(
       label: Text('$role — $email', style: TextStyle(fontSize: 12)),
       onPressed: () {
         // fill form with demo account
         setState(() {
           _emailCtrl.text = email;
-          _passCtrl.text = '123456';
+          _passCtrl.text = password;
         });
       },
     );
