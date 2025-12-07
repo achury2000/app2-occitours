@@ -103,7 +103,7 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _filter,
+                    initialValue: _filter,
                     items: ['Todas', 'Confirmada', 'Completada', 'Cancelada']
                         .map((s) => DropdownMenuItem(child: Text(s), value: s))
                         .toList(),

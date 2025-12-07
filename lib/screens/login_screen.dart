@@ -204,26 +204,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                   redirect,
                                   arguments: redirectArgs);
                             } else {
-                              if (role == 'admin') {
+                              if (role == 'admin' || role == 'administrador') {
                                 Navigator.of(context)
                                     .pushReplacementNamed('/admin');
                               } else if (role == 'asesor' ||
-                                  role == 'advisor') {
+                                  role == 'advisor' ||
+                                  role == 'guía') {
                                 Navigator.of(context)
                                     .pushReplacementNamed('/advisor');
                               } else if (role == 'cliente' ||
                                   role == 'client') {
-                                // If there was a redirect attempt but role wasn't allowed,
-                                // fall back to the role-specific home. If no redirect was
-                                // requested (normal login), send clients to the public
-                                // main page so they see the general landing (matches UX).
-                                if (redirect != null) {
-                                  Navigator.of(context)
-                                      .pushReplacementNamed('/client/home');
-                                } else {
-                                  Navigator.of(context)
-                                      .pushReplacementNamed('/');
-                                }
+                                Navigator.of(context)
+                                    .pushReplacementNamed('/client/home');
                               } else {
                                 Navigator.of(context).pushReplacementNamed('/');
                               }

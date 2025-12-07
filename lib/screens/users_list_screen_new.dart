@@ -201,7 +201,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                 ),
                 SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _roleFilter,
+                  initialValue: _roleFilter,
                   decoration: InputDecoration(
                     labelText: 'Filtrar por rol',
                     border: OutlineInputBorder(),

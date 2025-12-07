@@ -80,6 +80,10 @@ import 'screens/admin_analytics_screen.dart';
 import 'screens/reservations_flow_screen.dart';
 import 'screens/advisor_dashboard_screen.dart';
 import 'screens/client_home_screen.dart';
+import 'screens/client_catalog_screen.dart';
+import 'screens/client_new_reservation_screen.dart';
+import 'screens/client_my_reservations_screen.dart';
+import 'screens/client_profile_screen.dart';
 import 'screens/access_denied_screen.dart';
 import 'screens/suppliers_list_screen.dart';
 import 'screens/supplier_form_screen.dart';
@@ -184,6 +188,14 @@ class OccitoursApp extends StatelessWidget {
               guarded(['asesor', 'advisor', 'admin'], AdvisorDashboardScreen()),
           ClientHomeScreen.routeName:
               guarded(['cliente', 'client'], ClientHomeScreen()),
+          ClientCatalogScreen.routeName:
+              guarded(['cliente', 'client'], ClientCatalogScreen()),
+          ClientNewReservationScreen.routeName:
+              guarded(['cliente', 'client'], ClientNewReservationScreen()),
+          ClientMyReservationsScreen.routeName:
+              guarded(['cliente', 'client'], ClientMyReservationsScreen()),
+          ClientProfileScreen.routeName:
+              guarded(['cliente', 'client'], ClientProfileScreen()),
           ClientsRegisterScreen.routeName: (ctx) => ClientsRegisterScreen(),
           ClientsListScreen.routeName: guarded(['admin'], ClientsListScreen()),
           ClientDetailScreen.routeName:

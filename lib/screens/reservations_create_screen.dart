@@ -2,36 +2,84 @@
 // parte linsaith
 // parte juanjo
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../providers/clients_provider.dart';
-import '../providers/services_provider.dart';
-import '../providers/fincas_provider.dart';
 import '../services/api_service.dart';
 import 'package:flutter/services.dart';
 
-/// Pantalla/Formulario para crear una reserva.
-///
-/// Responsabilidades:
-/// - Recolectar datos (finca, servicio, cliente, fecha/hora, número de personas y notas) y validar disponibilidad.
-/// - Al confirmar, crea la reserva via backend API y muestra confirmación/copiado.
-///
-/// Herencia / Overrides:
-/// - `StatefulWidget` con lógica en `_ReservationsCreateScreenState`, usa pickers de fecha y hora.
+/// Pantalla/Formulario para crear una reserva con integración directa al backend.
 class ReservationsCreateScreen extends StatefulWidget {
   static const routeName = '/reservations/create';
+
   @override
   _ReservationsCreateScreenState createState() =>
       _ReservationsCreateScreenState();
 }
 
 class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
+  final ApiService _apiService = ApiService();
+
   DateTime? _date;
   TimeOfDay? _time;
   int _people = 2;
   final _notesCtrl = TextEditingController();
+
   String? _selectedClientId;
   String? _selectedServiceId;
-  String? _fincaId;
+  String? _selectedFincaId;
+  String? _selectedRutaId;
+  String? _selectedProgramacionId;
+
+  List<dynamic> _clientes = [];
+  List<dynamic> _fincas = [];
+  List<dynamic> _servicios = [];
+  List<dynamic> _rutas = [];
+  List<dynamic> _programaciones = [];
+
+  bool _loadingClientes = true;
+  bool _loadingFincas = true;
+  bool _loadingServicios = true;
+  bool _loadingRutas = true;
+  bool _loadingProgramaciones = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    try {
+      final results = await Future.wait([
+        _apiService.getClientes(),
+        _apiService.getFincas(),
+        _apiService.getServicios(),
+        _apiService.getRutas(),
+        _apiService.getProgramaciones(),
+      ]);
+
+      setState(() {
+        _clientes = results[0];
+        _fincas = results[1];
+        _servicios = results[2];
+        _rutas = results[3];
+        _programaciones = results[4];
+        _loadingClientes = false;
+        _loadingFincas = false;
+        _loadingServicios = false;
+        _loadingRutas = false;
+        _loadingProgramaciones = false;
+      });
+    } catch (e) {
+      print('Error cargando datos: $e');
+      setState(() {
+        _loadingClientes = false;
+        _loadingFincas = false;
+        _loadingServicios = false;
+        _loadingRutas = false;
+        _loadingProgramaciones = false;
+      });
+      _showError('Error cargando datos: ${e.toString()}');
+    }
+  }
 
   Future<void> _pickDate() async {
     final d = await showDatePicker(
@@ -52,7 +100,6 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
   }
 
   Future<void> _confirm() async {
-    // Validaciones básicas
     if (_date == null) {
       _showError('Por favor selecciona una fecha');
       return;
@@ -68,37 +115,34 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
       return;
     }
 
-    // Preparar fecha en formato ISO (YYYY-MM-DD HH:MM:SS)
     final dateStr = _date!.toLocal().toString().split(' ')[0];
     final timeStr =
         '${_time!.hour.toString().padLeft(2, '0')}:${_time!.minute.toString().padLeft(2, '0')}:00';
     final fechaCompleta = '$dateStr $timeStr';
 
     try {
-      // Mostrar loading
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (_) => Center(child: CircularProgressIndicator()),
       );
 
-      // Llamar API para crear reserva
-      final apiService = ApiService();
-      final result = await apiService.createReserva(
+      final result = await _apiService.createReserva(
         clienteId: int.parse(_selectedClientId!),
         fecha: fechaCompleta,
-        fincaId: _fincaId != null ? int.tryParse(_fincaId!) : null,
+        fincaId:
+            _selectedFincaId != null ? int.tryParse(_selectedFincaId!) : null,
+        programacionId: _selectedProgramacionId != null
+            ? int.tryParse(_selectedProgramacionId!)
+            : null,
         numeroPersonas: _people,
         estado: 'confirmada',
       );
 
-      // Cerrar loading
       Navigator.of(context).pop();
 
-      // Obtener número de reserva
       final reservaId = result['reserva']['id'].toString();
 
-      // Mostrar confirmación
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
@@ -108,7 +152,7 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                Navigator.of(context).pop(true); // Regresar a lista
+                Navigator.of(context).pop(true);
               },
               child: Text('OK'),
             ),
@@ -125,10 +169,7 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
         ),
       );
     } catch (e) {
-      // Cerrar loading si está abierto
       Navigator.of(context).pop();
-
-      // Mostrar error
       final msg = e.toString().replaceFirst('Exception: ', '');
       _showError(msg);
     }
@@ -152,37 +193,109 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final arg = ModalRoute.of(context)?.settings.arguments;
-    if (arg is String && (_fincaId == null || _fincaId != arg)) {
-      _fincaId = arg;
-    }
     return Scaffold(
       appBar: AppBar(title: Text('Crear Reserva')),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
-        child: ListView(
+        child: Column(
           children: [
-            if (_fincaId != null)
-              Card(
-                child: Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Finca seleccionada',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      SizedBox(height: 8),
-                      Consumer<FincasProvider>(
-                        builder: (ctx, fp, _) {
-                          final f = fp.findById(_fincaId!);
-                          if (f == null) return Text('Finca no encontrada');
-                          return Text('${f.name} • ${f.location}');
-                        },
-                      ),
-                    ],
-                  ),
+            // FINCA
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Finca',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    SizedBox(height: 8),
+                    _loadingFincas
+                        ? CircularProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            initialValue: _selectedFincaId,
+                            items: [
+                              DropdownMenuItem(
+                                  value: '', child: Text('Seleccionar finca')),
+                              ..._fincas.map((f) => DropdownMenuItem(
+                                    value: f['id'].toString(),
+                                    child: Text(
+                                        '${f['nombre']} (Cap: ${f['capacidad']})'),
+                                  )),
+                            ],
+                            onChanged: (v) => setState(() => _selectedFincaId =
+                                (v != null && v.isNotEmpty) ? v : null),
+                          ),
+                  ],
                 ),
               ),
+            ),
+
+            // RUTA
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Ruta', style: TextStyle(fontWeight: FontWeight.w700)),
+                    SizedBox(height: 8),
+                    _loadingRutas
+                        ? CircularProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            initialValue: _selectedRutaId,
+                            items: [
+                              DropdownMenuItem(
+                                  value: '',
+                                  child: Text('Seleccionar ruta (opcional)')),
+                              ..._rutas.map((r) => DropdownMenuItem(
+                                    value: r['id'].toString(),
+                                    child: Text(
+                                        '${r['nombre']} (${r['duracion_horas']}h)'),
+                                  )),
+                            ],
+                            onChanged: (v) => setState(() => _selectedRutaId =
+                                (v != null && v.isNotEmpty) ? v : null),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+
+            // PROGRAMACIÓN
+            Card(
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Programación',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    SizedBox(height: 8),
+                    _loadingProgramaciones
+                        ? CircularProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            initialValue: _selectedProgramacionId,
+                            items: [
+                              DropdownMenuItem(
+                                  value: '',
+                                  child: Text(
+                                      'Seleccionar programación (opcional)')),
+                              ..._programaciones.map((p) => DropdownMenuItem(
+                                    value: p['id'].toString(),
+                                    child: Text(
+                                        '${p['fecha']} - ${p['hora']} (Guía: ${p['guia_nombre'] ?? 'N/A'})'),
+                                  )),
+                            ],
+                            onChanged: (v) => setState(() =>
+                                _selectedProgramacionId =
+                                    (v != null && v.isNotEmpty) ? v : null),
+                          ),
+                  ],
+                ),
+              ),
+            ),
+
+            // SERVICIO
             Card(
               child: Padding(
                 padding: EdgeInsets.all(12),
@@ -192,50 +305,31 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
                     Text('Servicio',
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     SizedBox(height: 8),
-                    Builder(
-                      builder: (ctx) {
-                        final sp = Provider.of<ServicesProvider>(ctx);
-                        final fp = Provider.of<FincasProvider>(ctx);
-                        List services;
-                        if (_fincaId != null) {
-                          try {
-                            final f = fp.findById(_fincaId!);
-                            if (f != null) {
-                              services = f.serviceIds
-                                  .map((id) => sp.getById(id))
-                                  .where((s) => s != null)
-                                  .map((s) => s!)
-                                  .toList();
-                            } else {
-                              services = sp.search();
-                            }
-                          } catch (_) {
-                            services = sp.search();
-                          }
-                        } else
-                          services = sp.search();
-                        final items = services
-                            .map<DropdownMenuItem<String>>(
-                              (s) => DropdownMenuItem(
-                                  value: s.id, child: Text(s.name)),
-                            )
-                            .toList();
-                        return DropdownButtonFormField<String>(
-                          value: _selectedServiceId,
-                          items: [
-                            DropdownMenuItem(
-                                value: '', child: Text('Seleccionar servicio')),
-                            ...items
-                          ],
-                          onChanged: (v) => setState(() => _selectedServiceId =
-                              (v != null && v.isNotEmpty) ? v : null),
-                        );
-                      },
-                    ),
+                    _loadingServicios
+                        ? CircularProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            initialValue: _selectedServiceId,
+                            items: [
+                              DropdownMenuItem(
+                                  value: '',
+                                  child:
+                                      Text('Seleccionar servicio (opcional)')),
+                              ..._servicios.map((s) => DropdownMenuItem(
+                                    value: s['id'].toString(),
+                                    child: Text(
+                                        '${s['nombre']} - \$${s['precio']}'),
+                                  )),
+                            ],
+                            onChanged: (v) => setState(() =>
+                                _selectedServiceId =
+                                    (v != null && v.isNotEmpty) ? v : null),
+                          ),
                   ],
                 ),
               ),
             ),
+
+            // CLIENTE
             Card(
               child: Padding(
                 padding: EdgeInsets.all(12),
@@ -245,40 +339,29 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
                     Text('Cliente',
                         style: TextStyle(fontWeight: FontWeight.w700)),
                     SizedBox(height: 8),
-                    Builder(
-                      builder: (ctx) {
-                        final prov = Provider.of<ClientsProvider>(ctx);
-                        if (prov.loading)
-                          return SizedBox(
-                            height: 48,
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        final items = prov.clients
-                            .map(
-                              (c) => DropdownMenuItem<String>(
-                                value: c['id'] as String,
-                                child:
-                                    Text('${c['name']} (${c['email'] ?? ''})'),
-                              ),
-                            )
-                            .toList();
-                        return DropdownButtonFormField<String>(
-                          value: _selectedClientId,
-                          items: [
-                            DropdownMenuItem<String>(
-                                value: '', child: Text('Seleccionar cliente')),
-                            ...items
-                          ],
-                          onChanged: (v) => setState(() => _selectedClientId =
-                              (v != null && v.isNotEmpty) ? v : null),
-                          decoration: InputDecoration(),
-                        );
-                      },
-                    ),
+                    _loadingClientes
+                        ? CircularProgressIndicator()
+                        : DropdownButtonFormField<String>(
+                            initialValue: _selectedClientId,
+                            items: [
+                              DropdownMenuItem(
+                                  value: '',
+                                  child: Text('Seleccionar cliente')),
+                              ..._clientes.map((c) => DropdownMenuItem(
+                                    value: c['id'].toString(),
+                                    child: Text(
+                                        '${c['nombre']} (${c['email'] ?? c['cedula'] ?? ''})'),
+                                  )),
+                            ],
+                            onChanged: (v) => setState(() => _selectedClientId =
+                                (v != null && v.isNotEmpty) ? v : null),
+                          ),
                   ],
                 ),
               ),
             ),
+
+            // FECHA, HORA, PERSONAS
             Card(
               child: Padding(
                 padding: EdgeInsets.all(12),
@@ -318,10 +401,8 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
                     DropdownButton<int>(
                       value: _people,
                       items: [1, 2, 3, 4, 5, 6, 8, 10]
-                          .map(
-                            (n) =>
-                                DropdownMenuItem(value: n, child: Text('$n')),
-                          )
+                          .map((n) =>
+                              DropdownMenuItem(value: n, child: Text('$n')))
                           .toList(),
                       onChanged: (v) => setState(() => _people = v ?? 2),
                     ),
@@ -347,7 +428,7 @@ class _ReservationsCreateScreenState extends State<ReservationsCreateScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _confirm,
-                        child: Text('Confirmar'),
+                        child: Text('Confirmar Reserva'),
                       ),
                     ),
                   ],

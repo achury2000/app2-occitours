@@ -380,6 +380,8 @@ class ApiService {
     double? precioTotal,
     String? qrCode,
     String? comprobantePago,
+    List<Map<String, dynamic>>?
+        servicios, // Array de {servicio_id, cantidad, precio_unitario}
   }) async {
     try {
       final body = {
@@ -395,6 +397,8 @@ class ApiService {
       if (precioTotal != null) body['precio_total'] = precioTotal;
       if (qrCode != null) body['qr_code'] = qrCode;
       if (comprobantePago != null) body['comprobante_pago'] = comprobantePago;
+      if (servicios != null && servicios.isNotEmpty)
+        body['servicios'] = servicios;
 
       final response = await http.post(
         Uri.parse('$baseUrl/reservas'),
@@ -470,6 +474,148 @@ class ApiService {
         throw data['message'] ??
             data['error'] ??
             'Error al obtener reservas del cliente';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  // ========================================
+  // CLIENTES
+  // ========================================
+
+  /// GET /api/clientes - Obtener todos los clientes
+  Future<List<dynamic>> getClientes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/clientes'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['clientes'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener clientes';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/clientes/by-cedula/:cedula - Obtener cliente por cédula
+  Future<Map<String, dynamic>> getClienteByCedula(String cedula) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/clientes/by-cedula/$cedula'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['cliente'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener cliente';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  // ========================================
+  // FINCAS
+  // ========================================
+
+  /// GET /api/fincas - Obtener todas las fincas
+  Future<List<dynamic>> getFincas() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/fincas'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['fincas'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener fincas';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  // ========================================
+  // SERVICIOS
+  // ========================================
+
+  /// GET /api/servicios - Obtener todos los servicios
+  Future<List<dynamic>> getServicios() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/servicios'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['servicios'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener servicios';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  // ========================================
+  // RUTAS
+  // ========================================
+
+  /// GET /api/rutas - Obtener todas las rutas
+  Future<List<dynamic>> getRutas() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/rutas'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['rutas'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener rutas';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  // ========================================
+  // PROGRAMACIONES
+  // ========================================
+
+  /// GET /api/programaciones - Obtener todas las programaciones
+  Future<List<dynamic>> getProgramaciones() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/programaciones'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['programaciones'];
+      } else {
+        throw data['message'] ??
+            data['error'] ??
+            'Error al obtener programaciones';
       }
     } catch (e) {
       throw 'Error de conexión: $e';

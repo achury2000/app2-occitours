@@ -39,6 +39,7 @@ class AuthProvider with ChangeNotifier {
           name: '${userData['nombre']} ${userData['apellido']}',
           email: userData['email'],
           role: userData['rol'],
+          cedula: userData['cedula']?.toString(),
           phone: '', // No viene en la respuesta del login
           address: '',
         );
@@ -50,6 +51,9 @@ class AuthProvider with ChangeNotifier {
         await prefs.setString('userName', _user!.name);
         await prefs.setString('userEmail', _user!.email);
         await prefs.setString('userRole', _user!.role);
+        if (_user!.cedula != null) {
+          await prefs.setString('userCedula', _user!.cedula!);
+        }
 
         print('💾 Sesión guardada en SharedPreferences');
         print('   Token: ${_token?.substring(0, 20)}...');
@@ -143,6 +147,7 @@ class AuthProvider with ChangeNotifier {
     final userName = prefs.getString('userName');
     final userEmail = prefs.getString('userEmail');
     final userRole = prefs.getString('userRole');
+    final userCedula = prefs.getString('userCedula');
 
     print('🔄 Cargando sesión desde SharedPreferences...');
     print('   Token existe: ${storedToken != null}');
@@ -157,6 +162,7 @@ class AuthProvider with ChangeNotifier {
         name: userName ?? '',
         email: userEmail ?? '',
         role: userRole ?? '',
+        cedula: userCedula,
         phone: '',
         address: '',
       );

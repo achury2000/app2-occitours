@@ -18,7 +18,6 @@ router.get('/', async (req, res) => {
         r.cliente_id,
         c.nombre as cliente_nombre,
         c.email as cliente_email,
-        r.programacion_id,
         r.finca_id,
         f.nombre as finca_nombre,
         r.venta_id,
@@ -63,7 +62,6 @@ router.get('/:id', async (req, res) => {
         c.nombre as cliente_nombre,
         c.email as cliente_email,
         c.telefono as cliente_telefono,
-        r.programacion_id,
         r.finca_id,
         f.nombre as finca_nombre,
         r.venta_id,
@@ -109,14 +107,16 @@ router.post('/', async (req, res) => {
     const { 
       cliente_id, 
       finca_id, 
+      programacion_id,
       fecha, 
       numero_personas = 1, 
       precio_total = 0,
-      notas 
+      notas,
+      servicios = [] // Array de {servicio_id, cantidad, precio_unitario}
     } = req.body;
 
     console.log('🔧 POST /reservas - Crear nueva reserva');
-    console.log('   Datos:', { cliente_id, finca_id, fecha, numero_personas, precio_total });
+    console.log('   Datos:', { cliente_id, finca_id, programacion_id, fecha, numero_personas, precio_total, servicios });
 
     // Validar campos obligatorios
     if (!cliente_id || !fecha) {
@@ -152,25 +152,69 @@ router.post('/', async (req, res) => {
       }
     }
 
+    // Verificar que la programación existe (si se proporcionó)
+    if (programacion_id) {
+      const programacionExiste = await db.query(
+        'SELECT id FROM programaciones WHERE id = $1',
+        [programacion_id]
+      );
+      if (programacionExiste.rows.length === 0) {
+        return res.status(404).json({ 
+          error: 'Programación no encontrada',
+          message: `No existe una programación con ID ${programacion_id}` 
+        });
+      }
+    }
+
     // Insertar reserva
     const result = await db.query(
       `INSERT INTO reservas (
         cliente_id, 
-        finca_id, 
+        finca_id,
+        programacion_id, 
         fecha, 
         numero_personas, 
         precio_total,
         estado
       )
-       VALUES ($1, $2, $3, $4, $5, 'pendiente')
-       RETURNING id, cliente_id, finca_id, fecha, numero_personas, precio_total, estado`,
-      [cliente_id, finca_id, fecha, numero_personas, precio_total]
+       VALUES ($1, $2, $3, $4, $5, $6, 'pendiente')
+       RETURNING id, cliente_id, finca_id, programacion_id, fecha, numero_personas, precio_total, estado`,
+      [cliente_id, finca_id, programacion_id, fecha, numero_personas, precio_total]
     );
+
+    const reservaId = result.rows[0].id;
+
+    // Insertar servicios asociados (si existen)
+    if (servicios && servicios.length > 0) {
+      for (const servicio of servicios) {
+        const { servicio_id, cantidad = 1, precio_unitario } = servicio;
+
+        // Validar que el servicio existe
+        const servicioExiste = await db.query(
+          'SELECT id FROM servicios WHERE id = $1',
+          [servicio_id]
+        );
+        if (servicioExiste.rows.length === 0) {
+          return res.status(404).json({ 
+            error: 'Servicio no encontrado',
+            message: `No existe un servicio con ID ${servicio_id}` 
+          });
+        }
+
+        // Insertar en reserva_servicio
+        await db.query(
+          `INSERT INTO reserva_servicio (reserva_id, servicio_id, cantidad, precio_unitario)
+           VALUES ($1, $2, $3, $4)`,
+          [reservaId, servicio_id, cantidad, precio_unitario]
+        );
+      }
+    }
 
     res.status(201).json({
       success: true,
       message: 'Reserva creada exitosamente',
-      reserva: result.rows[0]
+      reserva: result.rows[0],
+      servicios_agregados: servicios.length
     });
 
   } catch (error) {
