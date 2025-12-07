@@ -113,15 +113,20 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
                   ),
                 ),
                 SizedBox(width: 12),
-                ElevatedButton(
+                ElevatedButton.icon(
+                  icon: Icon(Icons.add, color: Colors.white),
+                  label: Text('Nueva', style: TextStyle(color: Colors.white)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade700,
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
                   onPressed: () async {
                     final result = await Navigator.of(context)
-                        .pushNamed('/reservations/create');
+                        .pushNamed('/admin/reservations/create');
                     if (result == true) {
                       _loadReservas(); // Recargar después de crear
                     }
                   },
-                  child: Text('Crear'),
                 ),
               ],
             ),
@@ -168,9 +173,18 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
                         subtitle: Text(
                           '$fecha • $fincaNombre • $personas persona(s) • Estado: $estado',
                         ),
-                        trailing: IconButton(
-                          icon: Icon(Icons.delete, color: Colors.red),
-                          onPressed: () => _cancelarReserva(r['id']),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () => _editarReserva(r),
+                            ),
+                            IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () => _cancelarReserva(r['id']),
+                            ),
+                          ],
                         ),
                         onTap: () {
                           // Navegar a detalle si existe la ruta
@@ -185,6 +199,14 @@ class _ReservationsListScreenState extends State<ReservationsListScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _editarReserva(dynamic reserva) async {
+    await Navigator.of(context).pushNamed(
+      '/admin/reservations/edit',
+      arguments: reserva,
+    );
+    _loadReservas(); // Recargar después de editar
   }
 
   Future<void> _cancelarReserva(int id) async {

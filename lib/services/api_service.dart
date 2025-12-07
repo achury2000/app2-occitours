@@ -380,6 +380,7 @@ class ApiService {
     double? precioTotal,
     String? qrCode,
     String? comprobantePago,
+    List<int>? serviciosIds, // Lista simple de IDs de servicios
     List<Map<String, dynamic>>?
         servicios, // Array de {servicio_id, cantidad, precio_unitario}
   }) async {
@@ -397,8 +398,16 @@ class ApiService {
       if (precioTotal != null) body['precio_total'] = precioTotal;
       if (qrCode != null) body['qr_code'] = qrCode;
       if (comprobantePago != null) body['comprobante_pago'] = comprobantePago;
-      if (servicios != null && servicios.isNotEmpty)
+
+      // Convertir serviciosIds a formato esperado por backend
+      if (serviciosIds != null && serviciosIds.isNotEmpty) {
+        body['servicios'] = serviciosIds
+            .map((id) =>
+                {'servicio_id': id, 'cantidad': 1, 'precio_unitario': 0})
+            .toList();
+      } else if (servicios != null && servicios.isNotEmpty) {
         body['servicios'] = servicios;
+      }
 
       final response = await http.post(
         Uri.parse('$baseUrl/reservas'),
@@ -420,8 +429,24 @@ class ApiService {
 
   /// PUT /api/reservas/:id - Actualizar reserva
   Future<Map<String, dynamic>> updateReserva(
-      String id, Map<String, dynamic> updates) async {
+    String id, {
+    int? clienteId,
+    String? fecha,
+    int? programacionId,
+    int? fincaId,
+    int? numeroPersonas,
+    String? estado,
+  }) async {
     try {
+      final Map<String, dynamic> updates = {};
+
+      if (clienteId != null) updates['cliente_id'] = clienteId;
+      if (fecha != null) updates['fecha'] = fecha;
+      if (programacionId != null) updates['programacion_id'] = programacionId;
+      if (fincaId != null) updates['finca_id'] = fincaId;
+      if (numeroPersonas != null) updates['numero_personas'] = numeroPersonas;
+      if (estado != null) updates['estado'] = estado;
+
       final response = await http.put(
         Uri.parse('$baseUrl/reservas/$id'),
         headers: _getHeaders(requiresAuth: false),
@@ -616,6 +641,173 @@ class ApiService {
         throw data['message'] ??
             data['error'] ??
             'Error al obtener programaciones';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  // ========================================
+  // VENTAS
+  // ========================================
+
+  /// GET /api/ventas - Obtener todas las ventas
+  Future<List<dynamic>> getVentas() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/ventas'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['ventas'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener ventas';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/ventas/:id - Obtener una venta por ID
+  Future<Map<String, dynamic>> getVenta(String id) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/ventas/$id'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data['venta'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener venta';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// POST /api/ventas - Crear nueva venta
+  Future<Map<String, dynamic>> createVenta({
+    required int clienteId,
+    int? asesorId,
+    String? fecha,
+    double? total,
+    String estado = 'pendiente',
+    List<int>? reservasIds,
+  }) async {
+    try {
+      final body = {
+        'cliente_id': clienteId,
+        'fecha': fecha ?? DateTime.now().toIso8601String().split('T')[0],
+        'estado': estado,
+      };
+
+      if (asesorId != null) body['asesor_id'] = asesorId;
+      if (total != null) body['total'] = total;
+      if (reservasIds != null && reservasIds.isNotEmpty) {
+        body['reservas_ids'] = reservasIds;
+      }
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/ventas'),
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return data;
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al crear venta';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// PUT /api/ventas/:id - Actualizar venta
+  Future<Map<String, dynamic>> updateVenta(
+    String id, {
+    int? clienteId,
+    int? asesorId,
+    String? fecha,
+    double? total,
+    String? estado,
+  }) async {
+    try {
+      final Map<String, dynamic> updates = {};
+
+      if (clienteId != null) updates['cliente_id'] = clienteId;
+      if (asesorId != null) updates['asesor_id'] = asesorId;
+      if (fecha != null) updates['fecha'] = fecha;
+      if (total != null) updates['total'] = total;
+      if (estado != null) updates['estado'] = estado;
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/ventas/$id'),
+        headers: _getHeaders(),
+        body: jsonEncode(updates),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return data;
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al actualizar venta';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// DELETE /api/ventas/:id - Eliminar venta
+  Future<void> deleteVenta(String id) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/ventas/$id'),
+        headers: _getHeaders(),
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw data['message'] ?? data['error'] ?? 'Error al eliminar venta';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// POST /api/ventas/:id/abono - Agregar abono a venta
+  Future<Map<String, dynamic>> addAbonoToVenta(
+    String ventaId, {
+    required double monto,
+    String? fecha,
+  }) async {
+    try {
+      final body = {
+        'monto': monto,
+        'fecha': fecha ?? DateTime.now().toIso8601String().split('T')[0],
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/ventas/$ventaId/abono'),
+        headers: _getHeaders(),
+        body: jsonEncode(body),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 201) {
+        return data;
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al agregar abono';
       }
     } catch (e) {
       throw 'Error de conexión: $e';

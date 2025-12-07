@@ -233,7 +233,9 @@ router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { 
-      finca_id, 
+      cliente_id,
+      finca_id,
+      programacion_id,
       fecha, 
       numero_personas, 
       precio_total,
@@ -244,7 +246,7 @@ router.put('/:id', async (req, res) => {
 
     console.log('🔧 PUT /reservas/:id');
     console.log('   ID a actualizar:', id);
-    console.log('   Cambios:', { finca_id, fecha, numero_personas, precio_total, estado });
+    console.log('   Cambios:', { cliente_id, finca_id, programacion_id, fecha, numero_personas, precio_total, estado });
 
     // Verificar que la reserva existe
     const reservaExiste = await db.query(
@@ -263,9 +265,19 @@ router.put('/:id', async (req, res) => {
     const valores = [];
     let contador = 1;
 
+    if (cliente_id !== undefined) {
+      campos.push(`cliente_id = $${contador}`);
+      valores.push(cliente_id);
+      contador++;
+    }
     if (finca_id !== undefined) {
       campos.push(`finca_id = $${contador}`);
       valores.push(finca_id);
+      contador++;
+    }
+    if (programacion_id !== undefined) {
+      campos.push(`programacion_id = $${contador}`);
+      valores.push(programacion_id);
       contador++;
     }
     if (fecha !== undefined) {
@@ -311,15 +323,61 @@ router.put('/:id', async (req, res) => {
       UPDATE reservas 
       SET ${campos.join(', ')}
       WHERE id = $${contador}
-      RETURNING id, cliente_id, finca_id, fecha, numero_personas, precio_total, estado
+      RETURNING id, cliente_id, finca_id, programacion_id, fecha, numero_personas, precio_total, estado
     `;
 
     const result = await db.query(query, valores);
 
+    const reservaActualizada = result.rows[0];
+
+    // Si el estado cambió a 'confirmada', crear/actualizar venta automáticamente
+    if (estado && estado.toLowerCase() === 'confirmada') {
+      const clienteId = reservaActualizada.cliente_id;
+      const precioTotal = reservaActualizada.precio_total || 0;
+      const fechaReserva = reservaActualizada.fecha;
+
+      // Verificar si ya existe una venta para esta reserva
+      const ventaExistente = await db.query(
+        'SELECT id FROM ventas WHERE id = (SELECT venta_id FROM reservas WHERE id = $1)',
+        [id]
+      );
+
+      if (ventaExistente.rows.length === 0) {
+        // Crear nueva venta
+        const nuevaVenta = await db.query(
+          `INSERT INTO ventas (cliente_id, fecha, total, estado)
+           VALUES ($1, $2, $3, 'pendiente')
+           RETURNING id`,
+          [clienteId, fechaReserva, precioTotal]
+        );
+
+        const ventaId = nuevaVenta.rows[0].id;
+
+        // Asociar reserva con la venta
+        await db.query(
+          'UPDATE reservas SET venta_id = $1 WHERE id = $2',
+          [ventaId, id]
+        );
+
+        console.log(`✅ Venta ${ventaId} creada automáticamente para reserva ${id}`);
+      } else {
+        // Actualizar total de la venta existente
+        const ventaId = ventaExistente.rows[0].id;
+        await db.query(
+          `UPDATE ventas 
+           SET total = (SELECT SUM(precio_total) FROM reservas WHERE venta_id = $1)
+           WHERE id = $1`,
+          [ventaId]
+        );
+
+        console.log(`✅ Venta ${ventaId} actualizada para reserva ${id}`);
+      }
+    }
+
     res.json({
       success: true,
       message: 'Reserva actualizada exitosamente',
-      reserva: result.rows[0]
+      reserva: reservaActualizada
     });
 
   } catch (error) {

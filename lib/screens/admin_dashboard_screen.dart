@@ -26,10 +26,14 @@ class AdminDashboardScreen extends StatefulWidget {
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _loading = true;
   int _totalUsers = 0;
-  int _paquetes = 0;
+  int _totalFincas = 0;
+  int _totalRutas = 0;
   double _revenue = 0.0;
+  double _totalRevenue = 0.0; // Todos los ingresos
   int _displayYear = DateTime.now().year;
   int _displayMonth = DateTime.now().month;
+  List<dynamic> _programaciones = [];
+  List<dynamic> _reservasFromApi = []; // Reservas directas del backend
 
   @override
   void initState() {
@@ -52,17 +56,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void _onReservationsChanged() {
     // Regenera el informe y actualiza tarjetas de ingresos/estadísticas; se programa después del build
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final reservationsProv =
-          Provider.of<ReservationsProvider>(context, listen: false);
-      final reportsProv = Provider.of<ReportsProvider>(context, listen: false);
-      reportsProv
-          .generateReport(reservations: reservationsProv.reservations)
-          .then((_) {
-        if (!mounted) return;
-        setState(() {
-          _revenue = reportsProv.data['revenue'] ?? 0.0;
-        });
-      });
+      _loadStats(); // Recargar todo desde el backend
     });
   }
 
@@ -73,14 +67,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       final apiService = ApiService();
       final users = await apiService.getUsers();
       _totalUsers = users.length;
+
+      // Cargar programaciones
+      _programaciones = await apiService.getProgramaciones();
+
+      // Cargar fincas y rutas
+      final fincas = await apiService.getFincas();
+      _totalFincas = fincas.length;
+
+      final rutas = await apiService.getRutas();
+      _totalRutas = rutas.length;
+
+      // Cargar reservas directamente del backend
+      _reservasFromApi = await apiService.getReservas();
+
+      // Calcular ingresos directamente de las reservas del backend
+      _totalRevenue = _calcularTotalIngresos(_reservasFromApi);
+      _revenue = _calcularIngresosCompletados(_reservasFromApi);
     } catch (e) {
       _totalUsers = 0;
+      _programaciones = [];
+      _totalFincas = 0;
+      _totalRutas = 0;
+      _reservasFromApi = [];
+      _totalRevenue = 0.0;
+      _revenue = 0.0;
     }
-    // packages from ProductsProvider
-    final productsProv = Provider.of<ProductsProvider>(context, listen: false);
-    await productsProv.loadInitial();
-    _paquetes =
-        productsProv.items.where((p) => p.category == 'Paquetes').length;
     // wait for reservations provider to load then generate report based on reservations
     final reservationsProv =
         Provider.of<ReservationsProvider>(context, listen: false);
@@ -93,13 +105,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
     await reportsProv.generateReport(
         reservations: reservationsProv.reservations);
-    _revenue = reportsProv.data['revenue'] ?? 0.0;
+
     // Escuchar cambios en reservas para actualizar el dashboard en tiempo real
     try {
       reservationsProv.removeListener(_onReservationsChanged);
     } catch (_) {}
     reservationsProv.addListener(_onReservationsChanged);
     setState(() => _loading = false);
+  }
+
+  double _calcularTotalIngresos(List<dynamic> reservas) {
+    return reservas.fold(0.0, (sum, r) {
+      final precio = (r['precio_total'] ?? 0);
+      if (precio is String) {
+        return sum + (double.tryParse(precio) ?? 0.0);
+      }
+      return sum + (precio as num).toDouble();
+    });
+  }
+
+  double _calcularIngresosCompletados(List<dynamic> reservas) {
+    return reservas
+        .where((r) =>
+            (r['status'] ?? r['estado'] ?? '').toString().toLowerCase() ==
+            'completada')
+        .fold(0.0, (sum, r) {
+      // Intentar obtener precio de múltiples campos posibles
+      final precio = (r['price'] ?? r['precio_total'] ?? 0);
+      if (precio is String) {
+        return sum + (double.tryParse(precio) ?? 0.0);
+      }
+      return sum + (precio as num).toDouble();
+    });
+  }
+
+  int _contarReservasCompletadas(List<dynamic> reservas) {
+    return reservas
+        .where((r) =>
+            (r['status'] ?? r['estado'] ?? '').toString().toLowerCase() ==
+            'completada')
+        .length;
   }
 
   Widget statCard(String title, String value, {Color? color}) {
@@ -174,15 +219,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ? LinearProgressIndicator()
               : Row(children: [
                   Expanded(
-                      child: statCard('Total Usuarios', '$_totalUsers',
-                          color: Colors.green)),
+                      child: statCard('Fincas', '$_totalFincas',
+                          color: Colors.brown)),
                   SizedBox(width: 12),
-                  Expanded(child: statCard('Paquetes activos', '$_paquetes')),
+                  Expanded(
+                      child: statCard('Rutas', '$_totalRutas',
+                          color: Colors.orange)),
                   SizedBox(width: 12),
                   Expanded(
                       child: statCard(
-                          'Ingresos', 'COP ${_revenue.toStringAsFixed(0)}',
-                          color: Colors.green))
+                          'Completadas (${_contarReservasCompletadas(_reservasFromApi)})',
+                          'COP ${_revenue.toStringAsFixed(0)}',
+                          color: Colors.green)),
+                  SizedBox(width: 12),
+                  Expanded(
+                      child: statCard('Total Ingresos',
+                          'COP ${_totalRevenue.toStringAsFixed(0)}',
+                          color: Colors.blue))
                 ]),
           SizedBox(height: 16),
           // Acceso rápido eliminado del cuerpo; disponible desde el menú (hamburguesa)
@@ -226,12 +279,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                             ]),
                                         SizedBox(height: 8),
                                         _buildCalendar(context,
-                                            reservationsProv.reservations),
+                                            _reservasFromApi, _programaciones),
                                         SizedBox(height: 8),
                                         Wrap(
                                             spacing: 12,
                                             runSpacing: 6,
                                             children: [
+                                              _legendItem(
+                                                  Color.fromRGBO(
+                                                      156, 39, 176, 0.9),
+                                                  'Programaciones'),
                                               _legendItem(
                                                   Color.fromRGBO(
                                                       76, 175, 80, 0.9),
@@ -301,12 +358,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ]);
   }
 
-  Widget _buildCalendar(
-      BuildContext context, List<Map<String, dynamic>> reservations) {
+  Widget _buildCalendar(BuildContext context, List<dynamic> reservations,
+      List<dynamic> programaciones) {
     final year = _displayYear;
     final month = _displayMonth;
     final first = DateTime(year, month, 1);
     final daysInMonth = DateTime(year, month + 1, 0).day;
+
     // Group reservations by day (exclude cancelled)
     final Map<int, List<Map<String, dynamic>>> dayRes = {};
     for (var r in reservations) {
@@ -322,6 +380,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       } catch (_) {}
     }
 
+    // Group programaciones by day
+    final Map<int, List<dynamic>> dayProg = {};
+    for (var p in programaciones) {
+      final fechaStr = p['fecha'] as String?;
+      if (fechaStr == null) continue;
+      try {
+        final d = DateTime.parse(fechaStr);
+        if (d.year == year && d.month == month) {
+          dayProg[d.day] = [...(dayProg[d.day] ?? []), p];
+        }
+      } catch (_) {}
+    }
+
     final weekdayOffset = first.weekday % 7; // to start on Sunday
 
     List<Widget> dayWidgets = [];
@@ -331,10 +402,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
     for (int d = 1; d <= daysInMonth; d++) {
       final list = dayRes[d] ?? [];
-      // Decide dominant state: green if any 'Activa', yellow if any 'Pendiente'/'Reservada', otherwise blue for other reservations
+      final progs = dayProg[d] ?? [];
+
+      // Decide dominant state: green if any 'Activa', yellow if any 'Pendiente'/'Reservada',
+      // purple if programaciones, otherwise blue for other reservations
       Color? bgColor;
       Color? displayDot;
-      if (list.any(
+
+      if (progs.isNotEmpty) {
+        // Programaciones en morado
+        bgColor = Color.fromRGBO(156, 39, 176, 0.25); // purple
+        displayDot = Colors.purple.shade700;
+      } else if (list.any(
           (r) => (r['status'] ?? '').toString().toLowerCase() == 'activa')) {
         bgColor = Color.fromRGBO(76, 175, 80, 0.30); // stronger green
         displayDot = Colors.green.shade700;
@@ -352,7 +431,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
 
       dayWidgets.add(GestureDetector(
-        onTap: () => _showDayDetails(context, DateTime(year, month, d), list),
+        onTap: () =>
+            _showDayDetails(context, DateTime(year, month, d), list, progs),
         child: Container(
             margin: EdgeInsets.all(4),
             padding: EdgeInsets.all(6),
@@ -360,7 +440,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 color: bgColor,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: list.isNotEmpty
+                    color: (list.isNotEmpty || progs.isNotEmpty)
                         ? Colors.grey.shade400
                         : Colors.grey.shade300)),
             child: Column(children: [
@@ -375,8 +455,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           borderRadius: BorderRadius.circular(6)))
               ]),
               SizedBox(height: 6),
-              // show up to 3 time chips in blue
-              if (list.isNotEmpty)
+              // show up to 3 items (programaciones o reservas)
+              if (progs.isNotEmpty)
+                Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: progs.take(2).map<Widget>((p) {
+                      final hora = p['hora'] ?? '-';
+                      return Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                          decoration: BoxDecoration(
+                              color: Colors.purple.shade600,
+                              borderRadius: BorderRadius.circular(6)),
+                          child: Text('$hora',
+                              style: TextStyle(
+                                  color: Colors.white, fontSize: 11)));
+                    }).toList())
+              else if (list.isNotEmpty)
                 Wrap(
                     spacing: 4,
                     runSpacing: 4,
@@ -392,8 +488,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               style: TextStyle(
                                   color: Colors.white, fontSize: 11)));
                     }).toList()),
-              if (list.length > 3) SizedBox(height: 6),
-              if (list.length > 3)
+              if (progs.length > 2 || list.length > 3) SizedBox(height: 6),
+              if (progs.length > 2)
+                Align(
+                    alignment: Alignment.bottomRight,
+                    child: Text('+${progs.length - 2} más',
+                        style: TextStyle(
+                            fontSize: 10, color: Colors.grey.shade700)))
+              else if (list.length > 3)
                 Align(
                     alignment: Alignment.bottomRight,
                     child: Text('+${list.length - 3} más',
@@ -483,8 +585,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     drawerItem(
                         Icons.payment, 'Pagos a proveedores', '/payments'),
                     drawerItem(Icons.store, 'Proveedores', '/suppliers'),
-                    drawerItem(Icons.add_shopping_cart, 'Crear Pago',
-                        '/payments/create'),
+                    drawerItem(Icons.shopping_bag, 'Ventas', '/ventas'),
                     ListTile(
                       leading: Icon(Icons.warning_amber_rounded,
                           color: Colors.green),
@@ -523,19 +624,50 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   void _showDayDetails(BuildContext context, DateTime day,
-      List<Map<String, dynamic>> reservations) {
+      List<Map<String, dynamic>> reservations, List<dynamic> programaciones) {
     showDialog(
         context: context,
         builder: (_) {
           return AlertDialog(
-              title: Text('Reservas ${day.day}/${day.month}/${day.year}'),
+              title: Text('Detalles ${day.day}/${day.month}/${day.year}'),
               content: Container(
                   width: 300,
-                  child: reservations.isEmpty
-                      ? Text('No hay reservas')
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: reservations.map((r) {
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Programaciones
+                        if (programaciones.isNotEmpty) ...[
+                          Text('Programaciones',
+                              style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple)),
+                          SizedBox(height: 8),
+                          ...programaciones.map((p) {
+                            return Card(
+                              color: Colors.purple.shade50,
+                              child: ListTile(
+                                leading:
+                                    Icon(Icons.event, color: Colors.purple),
+                                title: Text('${p['hora'] ?? '-'}'),
+                                subtitle: Text(
+                                    'Guía: ${p['guia_nombre'] ?? '-'}\nRuta: ${p['ruta_nombre'] ?? '-'}'),
+                                isThreeLine: true,
+                              ),
+                            );
+                          }).toList(),
+                          Divider(),
+                        ],
+
+                        // Reservas
+                        if (reservations.isNotEmpty) ...[
+                          Text('Reservas',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 8),
+                          ...reservations.map((r) {
                             final st =
                                 (r['status'] ?? '').toString().toLowerCase();
                             Color dotColor = Colors.blue;
@@ -554,7 +686,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               trailing: Text(
                                   'COP ${((r['price'] ?? 0) as num).toStringAsFixed(0)}'),
                             );
-                          }).toList())),
+                          }).toList(),
+                        ],
+
+                        if (programaciones.isEmpty && reservations.isEmpty)
+                          Text('No hay eventos este día'),
+                      ],
+                    ),
+                  )),
               actions: [
                 TextButton(
                     onPressed: () => Navigator.of(context).pop(),

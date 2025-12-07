@@ -84,6 +84,11 @@ import 'screens/client_catalog_screen.dart';
 import 'screens/client_new_reservation_screen.dart';
 import 'screens/client_my_reservations_screen.dart';
 import 'screens/client_profile_screen.dart';
+import 'screens/admin_reservation_edit_screen.dart';
+import 'screens/admin_reservation_create_screen.dart';
+import 'screens/ventas_list_screen.dart';
+import 'screens/venta_create_screen.dart';
+import 'screens/venta_detail_screen.dart';
 import 'screens/access_denied_screen.dart';
 import 'screens/suppliers_list_screen.dart';
 import 'screens/supplier_form_screen.dart';
@@ -171,6 +176,13 @@ class OccitoursApp extends StatelessWidget {
               guarded(['admin', 'asesor', 'advisor'], ReservationsListScreen()),
           ReservationsCreateScreen.routeName:
               guarded(['admin'], ReservationsCreateScreen()),
+          '/admin/reservations/create':
+              guarded(['admin'], AdminReservationCreateScreen()),
+          '/admin/reservations/edit':
+              guarded(['admin'], AdminReservationEditScreen()),
+          VentasListScreen.routeName: guarded(['admin'], VentasListScreen()),
+          VentaCreateScreen.routeName: guarded(['admin'], VentaCreateScreen()),
+          VentaDetailScreen.routeName: guarded(['admin'], VentaDetailScreen()),
           ReservationsEditScreen.routeName: (ctx) {
             // This screen needs custom logic: allow admins and clients (screen validates ownership)
             final auth = Provider.of<AuthProvider>(ctx, listen: false);
