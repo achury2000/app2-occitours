@@ -1,0 +1,28 @@
+# // parte linsaith
+# // parte juanjo
+name: occitours_app
+description: Demo app for Occitours — state management and mock data showcase
+publish_to: "none"
+version: 0.0.1
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.2
+  provider: ^6.0.5
+  shared_preferences: ^2.0.15
+  fl_chart: ^1.1.1
+  intl: ^0.18.0
+  flutter_map: ^4.0.0
+  latlong2: ^0.8.2
+  uuid: ^3.0.6
+  http: ^0.13.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
