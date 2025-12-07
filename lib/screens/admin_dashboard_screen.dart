@@ -25,7 +25,6 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   bool _loading = true;
-  int _totalUsers = 0;
   int _totalFincas = 0;
   int _totalRutas = 0;
   double _revenue = 0.0;
@@ -34,6 +33,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   int _displayMonth = DateTime.now().month;
   List<dynamic> _programaciones = [];
   List<dynamic> _reservasFromApi = []; // Reservas directas del backend
+
+  // Nuevos datos del dashboard
+  List<double> _ingresosMensuales = List.filled(12, 0.0);
+  List<dynamic> _topFincas = [];
+  List<dynamic> _topRutas = [];
+  List<String> _mesesNombres = [];
 
   @override
   void initState() {
@@ -62,36 +67,45 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   Future<void> _loadStats() async {
     setState(() => _loading = true);
-    // users from API
     try {
       final apiService = ApiService();
-      final users = await apiService.getUsers();
-      _totalUsers = users.length;
+
+      // Cargar datos del dashboard desde la API
+      final dashboardStats = await apiService.getDashboardStats();
+
+      _totalFincas = dashboardStats['totales']['fincas'] ?? 0;
+      _totalRutas = dashboardStats['totales']['rutas'] ?? 0;
+      _totalRevenue =
+          (dashboardStats['ingresos']['total_general'] ?? 0.0).toDouble();
+      _revenue =
+          (dashboardStats['ingresos']['total_completado'] ?? 0.0).toDouble();
+
+      // Cargar datos de gráficas
+      final ingresosMensuales =
+          await apiService.getIngresosMensuales(year: _displayYear);
+      _ingresosMensuales = List<double>.from((ingresosMensuales['data'] as List)
+          .map((e) => (e as num).toDouble()));
+      _mesesNombres = List<String>.from(ingresosMensuales['meses']);
+
+      _topFincas = await apiService.getTopFincas();
+      _topRutas = await apiService.getTopRutas();
 
       // Cargar programaciones
       _programaciones = await apiService.getProgramaciones();
 
-      // Cargar fincas y rutas
-      final fincas = await apiService.getFincas();
-      _totalFincas = fincas.length;
-
-      final rutas = await apiService.getRutas();
-      _totalRutas = rutas.length;
-
       // Cargar reservas directamente del backend
       _reservasFromApi = await apiService.getReservas();
-
-      // Calcular ingresos directamente de las reservas del backend
-      _totalRevenue = _calcularTotalIngresos(_reservasFromApi);
-      _revenue = _calcularIngresosCompletados(_reservasFromApi);
     } catch (e) {
-      _totalUsers = 0;
+      print('Error cargando estadísticas: $e');
       _programaciones = [];
       _totalFincas = 0;
       _totalRutas = 0;
       _reservasFromApi = [];
       _totalRevenue = 0.0;
       _revenue = 0.0;
+      _ingresosMensuales = List.filled(12, 0.0);
+      _topFincas = [];
+      _topRutas = [];
     }
     // wait for reservations provider to load then generate report based on reservations
     final reservationsProv =
@@ -112,31 +126,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (_) {}
     reservationsProv.addListener(_onReservationsChanged);
     setState(() => _loading = false);
-  }
-
-  double _calcularTotalIngresos(List<dynamic> reservas) {
-    return reservas.fold(0.0, (sum, r) {
-      final precio = (r['precio_total'] ?? 0);
-      if (precio is String) {
-        return sum + (double.tryParse(precio) ?? 0.0);
-      }
-      return sum + (precio as num).toDouble();
-    });
-  }
-
-  double _calcularIngresosCompletados(List<dynamic> reservas) {
-    return reservas
-        .where((r) =>
-            (r['status'] ?? r['estado'] ?? '').toString().toLowerCase() ==
-            'completada')
-        .fold(0.0, (sum, r) {
-      // Intentar obtener precio de múltiples campos posibles
-      final precio = (r['price'] ?? r['precio_total'] ?? 0);
-      if (precio is String) {
-        return sum + (double.tryParse(precio) ?? 0.0);
-      }
-      return sum + (precio as num).toDouble();
-    });
   }
 
   int _contarReservasCompletadas(List<dynamic> reservas) {
@@ -318,25 +307,44 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w700)),
                                         SizedBox(height: 8),
-                                        Text('Top fincas y rutas',
+                                        Text('Top fincas',
                                             style: TextStyle(
                                                 fontWeight: FontWeight.w600)),
                                         SizedBox(height: 8),
-                                        ...((reportsProv.data['topProducts'] ??
-                                                []) as List)
-                                            .map<Widget>((p) => ListTile(
-                                                title: Text(p['name'] ?? '-'),
-                                                trailing:
-                                                    Text('${p['sales'] ?? 0}')))
+                                        ..._topFincas
+                                            .map<Widget>((f) => ListTile(
+                                                title: Text(f['nombre'] ?? '-'),
+                                                subtitle: Text(
+                                                    'Reservas: ${f['total_reservas'] ?? 0}'),
+                                                trailing: Text(
+                                                    'COP ${(f['ingresos_totales'] ?? 0.0).toStringAsFixed(0)}',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold))))
                                             .toList(),
                                         SizedBox(height: 12),
-                                        Text('Mejores meses (Ingresos)',
+                                        Text('Top rutas',
                                             style: TextStyle(
                                                 fontWeight: FontWeight.w600)),
                                         SizedBox(height: 8),
-                                        _buildMonthlyBarChart(reportsProv
-                                                .data['monthlyRevenue'] ??
-                                            [])
+                                        ..._topRutas
+                                            .map<Widget>((r) => ListTile(
+                                                title: Text(r['nombre'] ?? '-'),
+                                                subtitle: Text(
+                                                    'Reservas: ${r['total_reservas'] ?? 0}'),
+                                                trailing: Text(
+                                                    'COP ${(r['ingresos_totales'] ?? 0.0).toStringAsFixed(0)}',
+                                                    style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold))))
+                                            .toList(),
+                                        SizedBox(height: 12),
+                                        Text(
+                                            'Mejores meses (Ingresos $_displayYear)',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.w600)),
+                                        SizedBox(height: 8),
+                                        _buildMonthlyBarChartFromData()
                                       ])))
                         ])))
         ]),
@@ -724,54 +732,74 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     });
   }
 
-  Widget _buildMonthlyBarChart(List<dynamic> monthly) {
-    final list = monthly;
-    if (list.isEmpty)
+  Widget _buildMonthlyBarChartFromData() {
+    if (_ingresosMensuales.isEmpty ||
+        _ingresosMensuales.every((val) => val == 0)) {
       return Container(height: 140, child: Center(child: Text('No hay datos')));
-    final bars = list
-        .map((m) => BarChartGroupData(x: (m['month'] as int), barRods: [
-              BarChartRodData(
-                  toY: (m['value'] as num).toDouble(), color: Colors.green)
-            ]))
-        .toList();
-    final maxY = (list
-            .map((m) => (m['value'] as num).toDouble())
-            .reduce((a, b) => a > b ? a : b)) *
-        1.1;
+    }
+
+    final bars = List.generate(
+      12,
+      (index) => BarChartGroupData(
+        x: index + 1,
+        barRods: [
+          BarChartRodData(
+            toY: _ingresosMensuales[index],
+            color: Colors.green,
+            width: 16,
+          )
+        ],
+      ),
+    );
+
+    final maxY = _ingresosMensuales.reduce((a, b) => a > b ? a : b) * 1.1;
+
     return SizedBox(
-        height: 200,
-        child: BarChart(BarChartData(
-            alignment: BarChartAlignment.spaceAround,
-            maxY: maxY,
-            gridData: FlGridData(show: false),
-            titlesData: FlTitlesData(
-                show: true,
-                bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          final idx = value.toInt();
-                          final labels = [
-                            '',
-                            'Ene',
-                            'Feb',
-                            'Mar',
-                            'Abr',
-                            'May',
-                            'Jun',
-                            'Jul',
-                            'Ago',
-                            'Sep',
-                            'Oct',
-                            'Nov',
-                            'Dic'
-                          ];
-                          return Padding(
-                              padding: EdgeInsets.only(top: 6),
-                              child: Text(labels[idx]));
-                        })),
-                leftTitles:
-                    AxisTitles(sideTitles: SideTitles(showTitles: true))),
-            barGroups: bars)));
+      height: 200,
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          maxY: maxY > 0 ? maxY : 100,
+          gridData: FlGridData(show: false),
+          titlesData: FlTitlesData(
+            show: true,
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final idx = value.toInt() - 1;
+                  if (idx < 0 || idx >= _mesesNombres.length) {
+                    return Text('');
+                  }
+                  return Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      _mesesNombres[idx],
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 40,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    '${(value / 1000).toStringAsFixed(0)}k',
+                    style: TextStyle(fontSize: 10),
+                  );
+                },
+              ),
+            ),
+            topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          barGroups: bars,
+        ),
+      ),
+    );
   }
 }

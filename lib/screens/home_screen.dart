@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/products_provider.dart';
 import 'product_detail_screen.dart';
-import 'routes_screen.dart';
-import 'fincas_screen.dart';
 // imports intentionally minimal for this screen
 import 'login_screen.dart';
 
@@ -13,32 +11,18 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _assetBgAvailable = false;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final products = Provider.of<ProductsProvider>(context, listen: false);
       products.loadInitial();
-      // Try to precache a local asset but do it non-blocking and with timeout
-      // so a slow network or missing asset doesn't freeze the UI.
-      final assetImage = AssetImage('assets/images/occitours_bg.jpg');
-      final precacheFuture = precacheImage(assetImage, context);
-      // Use a timeout to avoid long waits; if it completes quickly mark available
-      precacheFuture.timeout(const Duration(seconds: 2)).then((_) {
-        if (mounted) setState(() => _assetBgAvailable = true);
-      }).catchError((_) {
-        if (mounted) setState(() => _assetBgAvailable = false);
-      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final products = Provider.of<ProductsProvider>(context);
-    final bgImage = products.items.isNotEmpty
-        ? products.items.first.imageUrl
-        : 'https://picsum.photos/seed/landscape/1200/800';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -58,28 +42,14 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Stack(
         children: [
-          // Background image (asset preferred)
+          // Background GIF animado
           Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-                image: _assetBgAvailable
-                    ? AssetImage('assets/images/occitours_bg.jpg')
-                        as ImageProvider
-                    : NetworkImage(bgImage),
+                image: NetworkImage(
+                  'https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3M3oybjA0MDF0dTVncjcwMTBocmJua3VrMjhpM3ZoOXl2N3QyajhtcSZlcD12MV9naWZzX3JlbGF0ZWQmY3Q9Zw/sQ8hBISEvSdfeuqJs8/giphy.gif',
+                ),
                 fit: BoxFit.cover,
-              ),
-            ),
-          ),
-          // Gradient overlay (green nature tones)
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color.fromRGBO(27, 94, 32, 0.85),
-                  Color.fromRGBO(102, 187, 106, 0.25)
-                ],
               ),
             ),
           ),
@@ -90,77 +60,101 @@ class _HomeScreenState extends State<HomeScreen> {
                   EdgeInsets.only(left: 20, right: 20, top: 24, bottom: 48),
               children: [
                 SizedBox(height: 20),
-                Text('Descubre la Naturaleza Colombiana',
-                    style: TextStyle(color: Colors.white70, fontSize: 18)),
+                // Logo de Occitours
+                Center(
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.network(
+                        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRpvD2NuGT4_7VIryWjPy-9WChb-K7ntAa-fg&s',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Icon(
+                            Icons.landscape,
+                            size: 80,
+                            color: Colors.green,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24),
+                // Mensaje de bienvenida
+                Center(
+                  child: Text(
+                    '¡Bienvenidos a Occitours!',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 8,
+                        ),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
                 SizedBox(height: 8),
-                Text('Occitours – Turismo de Naturaleza',
+                Text('Descubre la Naturaleza Colombiana',
+                    style: TextStyle(color: Colors.white70, fontSize: 18),
+                    textAlign: TextAlign.center),
+                SizedBox(height: 8),
+                Text('Turismo de Naturaleza',
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold)),
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center),
                 SizedBox(height: 12),
                 Text(
                     'Aventuras únicas en paisajes espectaculares con guías expertos y experiencias auténticas',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    textAlign: TextAlign.center),
                 SizedBox(height: 18),
-                Row(children: [
-                  Expanded(
-                      child: ElevatedButton(
-                    onPressed: () {
-                      try {
-                        final auth = Provider.of(context, listen: false);
-                        final role =
-                            (auth.user?.role ?? '').toString().toLowerCase();
-                        if (role == 'admin') {
-                          Navigator.of(context).pushNamed('/rutas/manage');
-                          return;
-                        }
-                      } catch (_) {}
-                      Navigator.of(context).pushNamed(RoutesScreen.routeName);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).primaryColor,
-                      elevation: 6,
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text('Explorar Rutas',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white)),
-                  )),
-                  SizedBox(width: 12),
-                  Expanded(
-                      child: ElevatedButton(
-                    onPressed: () {
-                      // En admin mostrar gestión, para otros mostrar listado público
-                      try {
-                        final auth = Provider.of(context, listen: false);
-                        final role =
-                            (auth.user?.role ?? '').toString().toLowerCase();
-                        if (role == 'admin') {
-                          Navigator.of(context).pushNamed('/fincas/manage');
-                          return;
-                        }
-                      } catch (_) {}
-                      Navigator.of(context).pushNamed(FincasScreen.routeName);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: Theme.of(context).primaryColor,
-                      elevation: 3,
-                      padding: EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      side: BorderSide(color: Theme.of(context).primaryColor),
-                    ),
-                    child: Text('Ver Fincas',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.w700)),
-                  )),
-                ]),
+                // Mensaje de inicio de sesión
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: Colors.white.withOpacity(0.3), width: 1),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.login, color: Colors.white, size: 22),
+                      SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Inicia sesión para explorar nuestro catálogo completo de rutas y fincas',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
                 SizedBox(height: 26),
 

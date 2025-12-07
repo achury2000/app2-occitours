@@ -20,6 +20,7 @@ const serviciosRoutes = require('./routes/servicios');
 const rutasRoutes = require('./routes/rutas');
 const programacionesRoutes = require('./routes/programaciones');
 const ventasRoutes = require('./routes/ventas');
+const dashboardRoutes = require('./routes/dashboard');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolesRoutes);
@@ -30,6 +31,7 @@ app.use('/api/servicios', serviciosRoutes);
 app.use('/api/rutas', rutasRoutes);
 app.use('/api/programaciones', programacionesRoutes);
 app.use('/api/ventas', ventasRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Ruta de prueba
 app.get('/', (req, res) => {
@@ -118,7 +120,14 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`   POST   http://localhost:${PORT}/api/ventas`);
   console.log(`   PUT    http://localhost:${PORT}/api/ventas/:id`);
   console.log(`   DELETE http://localhost:${PORT}/api/ventas/:id`);
-  console.log(`   POST   http://localhost:${PORT}/api/ventas/:id/abono\n`);
+  console.log(`   POST   http://localhost:${PORT}/api/ventas/:id/abono`);
+  console.log(`\n   === DASHBOARD ===`);
+  console.log(`   GET    http://localhost:${PORT}/api/dashboard/stats`);
+  console.log(`   GET    http://localhost:${PORT}/api/dashboard/ingresos-mensuales`);
+  console.log(`   GET    http://localhost:${PORT}/api/dashboard/top-fincas`);
+  console.log(`   GET    http://localhost:${PORT}/api/dashboard/top-rutas`);
+  console.log(`   GET    http://localhost:${PORT}/api/dashboard/top-servicios`);
+  console.log(`   GET    http://localhost:${PORT}/api/dashboard/reservas-recientes\n`);
 });
 
 module.exports = app;

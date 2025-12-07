@@ -813,4 +813,137 @@ class ApiService {
       throw 'Error de conexión: $e';
     }
   }
+
+  // ========================================
+  // DASHBOARD
+  // ========================================
+
+  /// GET /api/dashboard/stats - Estadísticas generales
+  Future<Map<String, dynamic>> getDashboardStats() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/stats'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      } else {
+        throw data['message'] ??
+            data['error'] ??
+            'Error al obtener estadísticas';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/dashboard/ingresos-mensuales - Ingresos por mes
+  Future<Map<String, dynamic>> getIngresosMensuales({int? year}) async {
+    try {
+      final queryParams = year != null ? '?year=$year' : '';
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/ingresos-mensuales$queryParams'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data;
+      } else {
+        throw data['message'] ??
+            data['error'] ??
+            'Error al obtener ingresos mensuales';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/dashboard/top-fincas - Top 5 fincas
+  Future<List<dynamic>> getTopFincas() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/top-fincas'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener top fincas';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/dashboard/top-rutas - Top 5 rutas
+  Future<List<dynamic>> getTopRutas() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/top-rutas'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      } else {
+        throw data['message'] ?? data['error'] ?? 'Error al obtener top rutas';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/dashboard/top-servicios - Top 5 servicios
+  Future<List<dynamic>> getTopServicios() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/top-servicios'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      } else {
+        throw data['message'] ??
+            data['error'] ??
+            'Error al obtener top servicios';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
+
+  /// GET /api/dashboard/reservas-recientes - Últimas reservas
+  Future<List<dynamic>> getReservasRecientes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/dashboard/reservas-recientes'),
+        headers: _getHeaders(),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        return data['data'];
+      } else {
+        throw data['message'] ??
+            data['error'] ??
+            'Error al obtener reservas recientes';
+      }
+    } catch (e) {
+      throw 'Error de conexión: $e';
+    }
+  }
 }
