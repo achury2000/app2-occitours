@@ -1,3 +1,38 @@
+/**
+ * =============================================
+ * RESERVAS.JS - GESTIÓN DE RESERVAS
+ * =============================================
+ * 
+ * Maneja las operaciones CRUD de reservas de clientes.
+ * Las reservas son el núcleo del sistema, conectando clientes,
+ * fincas, rutas, servicios y ventas.
+ * 
+ * ENDPOINTS:
+ * - GET    /                      - Listar todas las reservas
+ * - GET    /:id                   - Obtener detalles de una reserva
+ * - GET    /cliente/:cliente_id   - Reservas de un cliente específico
+ * - POST   /                      - Crear nueva reserva
+ * - PUT    /:id                   - Actualizar reserva
+ * - DELETE /:id                   - Eliminar reserva
+ * 
+ * MODELO:
+ * Reserva {
+ *   id, cliente_id, finca_id, venta_id, estado,
+ *   fecha, numero_personas, precio_total, qr_code, comprobante_pago
+ * }
+ * 
+ * RELACIONES:
+ * - Reserva pertenece a Cliente
+ * - Reserva pertenece a Finca (opcional)
+ * - Reserva puede tener múltiples Servicios (via reserva_servicio)
+ * - Reserva puede tener múltiples Rutas (via programacion_ruta -> reserva_programacion)
+ * - Reserva pertenece a Venta (cuando estado = 'confirmada')
+ * 
+ * LÓGICA ESPECIAL:
+ * - Al cambiar estado a 'confirmada', se crea automáticamente una venta
+ * - El precio_total se calcula automáticamente según servicios y rutas
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -10,6 +45,19 @@ const router = express.Router();
 // ================================================
 // GET /api/reservas - Listar todas las reservas (público)
 // ================================================
+/**
+ * Obtiene el listado completo de reservas con información
+ * de cliente y finca asociados.
+ * 
+ * RESPONSE:
+ * {
+ *   reservas: [ {
+ *     id, cliente_nombre, finca_nombre, fecha, 
+ *     numero_personas, precio_total, estado, ...
+ *   }, ... ],
+ *   total: 120
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(

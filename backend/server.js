@@ -1,27 +1,67 @@
+/**
+ * =============================================
+ * SERVER.JS - SERVIDOR BACKEND OCCITOURS
+ * =============================================
+ * 
+ * Servidor Express que gestiona la API REST para la aplicación Occitours.
+ * Proporciona endpoints para autenticación, gestión de reservas, ventas,
+ * dashboard, y administración de recursos turísticos.
+ * 
+ * ARQUITECTURA:
+ * - Express.js como framework web
+ * - PostgreSQL como base de datos
+ * - JWT para autenticación
+ * - CORS habilitado para Flutter app
+ * 
+ * PUERTO: 3000 (por defecto)
+ * HOST: 0.0.0.0 (permite conexiones desde emulador Android)
+ * 
+ * ENDPOINTS PRINCIPALES:
+ * - /api/auth       - Autenticación y usuarios
+ * - /api/reservas   - Gestión de reservas
+ * - /api/ventas     - Gestión de ventas y pagos
+ * - /api/dashboard  - Estadísticas y analytics
+ * - /api/fincas     - Catálogo de fincas
+ * - /api/rutas      - Catálogo de rutas
+ * - /api/servicios  - Servicios adicionales
+ */
+
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
+require('dotenv').config(); // Carga variables de entorno desde .env
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middlewares
+// =============================================
+// MIDDLEWARES GLOBALES
+// =============================================
+// CORS: Permite peticiones desde cualquier origen (necesario para Flutter)
 app.use(cors());
+// JSON Parser: Convierte el body de las peticiones a objetos JavaScript
 app.use(express.json());
+// URL Encoded: Permite procesar formularios HTML
 app.use(express.urlencoded({ extended: true }));
 
-// Rutas
-const authRoutes = require('./routes/auth');
-const rolesRoutes = require('./routes/roles');
-const reservasRoutes = require('./routes/reservas');
-const clientesRoutes = require('./routes/clientes');
-const fincasRoutes = require('./routes/fincas');
-const serviciosRoutes = require('./routes/servicios');
-const rutasRoutes = require('./routes/rutas');
-const programacionesRoutes = require('./routes/programaciones');
-const ventasRoutes = require('./routes/ventas');
-const dashboardRoutes = require('./routes/dashboard');
+// =============================================
+// IMPORTACIÓN DE RUTAS
+// =============================================
+// Cada archivo de routes maneja un recurso específico del sistema
+const authRoutes = require('./routes/auth');                    // Autenticación y usuarios
+const rolesRoutes = require('./routes/roles');                  // Gestión de roles
+const reservasRoutes = require('./routes/reservas');            // Reservas de clientes
+const clientesRoutes = require('./routes/clientes');            // Información de clientes
+const fincasRoutes = require('./routes/fincas');                // Catálogo de fincas
+const serviciosRoutes = require('./routes/servicios');          // Servicios adicionales
+const rutasRoutes = require('./routes/rutas');                  // Rutas turísticas
+const programacionesRoutes = require('./routes/programaciones');// Programación de rutas
+const ventasRoutes = require('./routes/ventas');                // Ventas y pagos
+const dashboardRoutes = require('./routes/dashboard');          // Estadísticas y analytics
 
+// =============================================
+// REGISTRO DE RUTAS EN LA APLICACIÓN
+// =============================================
+// Cada ruta se monta en un prefijo específico bajo /api
 app.use('/api/auth', authRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/reservas', reservasRoutes);
@@ -33,18 +73,26 @@ app.use('/api/programaciones', programacionesRoutes);
 app.use('/api/ventas', ventasRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Ruta de prueba
+// =============================================
+// RUTA RAÍZ - Información de la API
+// =============================================
 app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 API Occitours funcionando',
     version: '1.0.0',
     endpoints: {
-      auth: '/api/auth'
+      auth: '/api/auth',
+      reservas: '/api/reservas',
+      ventas: '/api/ventas',
+      dashboard: '/api/dashboard'
     }
   });
 });
 
-// Manejo de rutas no encontradas
+// =============================================
+// MANEJO DE ERRORES
+// =============================================
+// 404 - Ruta no encontrada
 app.use((req, res) => {
   res.status(404).json({ 
     error: 'Ruta no encontrada',
@@ -52,7 +100,7 @@ app.use((req, res) => {
   });
 });
 
-// Manejo de errores global
+// 500 - Error interno del servidor
 app.use((err, req, res, next) => {
   console.error('❌ Error no manejado:', err);
   res.status(500).json({
@@ -61,7 +109,10 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Capturar errores no manejados del proceso
+// =============================================
+// CAPTURA DE ERRORES NO MANEJADOS
+// =============================================
+// Previene que el servidor se caiga por errores no capturados
 process.on('uncaughtException', (err) => {
   console.error('💥 Excepción no capturada:', err);
   console.error('Stack:', err.stack);
@@ -72,7 +123,11 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Promesa:', promise);
 });
 
-// Iniciar servidor en 0.0.0.0 para permitir conexiones desde emulador Android
+// =============================================
+// INICIO DEL SERVIDOR
+// =============================================
+// Escucha en 0.0.0.0 para permitir conexiones desde emulador Android
+// El emulador Android usa 10.0.2.2 para acceder a localhost del host
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`\n🚀 Servidor corriendo en http://localhost:${PORT}`);
   console.log(`📚 Endpoints disponibles (TODOS PÚBLICOS):`);

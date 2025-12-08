@@ -1,3 +1,35 @@
+/**
+ * =============================================
+ * VENTAS.JS - GESTIÓN DE VENTAS Y PAGOS
+ * =============================================
+ * 
+ * Maneja la creación, consulta y actualización de ventas.
+ * Una venta agrupa múltiples reservas de un cliente y permite
+ * realizar seguimiento de pagos (abonos) y estado de pago.
+ * 
+ * ENDPOINTS:
+ * - GET    /              - Listar todas las ventas
+ * - GET    /:id           - Obtener detalles de una venta
+ * - POST   /              - Crear nueva venta
+ * - PUT    /:id           - Actualizar venta
+ * - DELETE /:id           - Eliminar venta
+ * - POST   /:id/abono     - Agregar pago/abono a una venta
+ * 
+ * MODELO DE DATOS:
+ * Venta {
+ *   id, cliente_id, asesor_id, fecha, total, estado
+ * }
+ * 
+ * RELACIONES:
+ * - Una venta pertenece a un cliente
+ * - Una venta puede tener múltiples reservas
+ * - Una venta puede tener múltiples abonos (pagos)
+ * 
+ * AUTO-CREACIÓN:
+ * Cuando una reserva cambia a estado 'confirmada', se crea
+ * automáticamente una venta si no existe (ver routes/reservas.js).
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -10,6 +42,16 @@ const router = express.Router();
 // ================================================
 // GET /api/ventas - Listar todas las ventas
 // ================================================
+/**
+ * Lista todas las ventas con información del cliente, asesor
+ * y cantidad de reservas asociadas.
+ * 
+ * RESPONSE:
+ * {
+ *   ventas: [ { id, cliente_nombre, asesor_nombre, fecha, total, estado, num_reservas }, ... ],
+ *   total: 25
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
@@ -50,6 +92,20 @@ router.get('/', async (req, res) => {
 // ================================================
 // GET /api/ventas/:id - Obtener venta por ID
 // ================================================
+/**
+ * Obtiene los detalles completos de una venta específica,
+ * incluyendo las reservas asociadas y los abonos realizados.
+ * 
+ * PARAMS:
+ * - id: ID de la venta
+ * 
+ * RESPONSE:
+ * {
+ *   venta: { id, cliente_nombre, asesor_nombre, fecha, total, estado },
+ *   reservas: [ { id, fecha, precio_total, estado, ... }, ... ],
+ *   abonos: [ { id, fecha, monto }, ... ]
+ * }
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

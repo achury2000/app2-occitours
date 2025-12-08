@@ -1,3 +1,24 @@
+/**
+ * =============================================
+ * FINCAS.JS - GESTIÓN DE FINCAS TURÍSTICAS
+ * =============================================
+ * 
+ * Maneja las operaciones CRUD para fincas turísticas.
+ * Las fincas son propiedades rurales donde se realizan
+ * actividades turísticas y de naturaleza.
+ * 
+ * ENDPOINTS:
+ * - GET  /          - Listar todas las fincas
+ * - GET  /:id       - Obtener detalles de una finca
+ * 
+ * MODELO:
+ * Finca { id, nombre, capacidad }
+ * 
+ * USO:
+ * Estos endpoints son consumidos por el catálogo de fincas
+ * en la aplicación Flutter.
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -6,6 +27,15 @@ const router = express.Router();
 // ================================================
 // GET /api/fincas - Listar todas las fincas
 // ================================================
+/**
+ * Obtiene el listado completo de fincas disponibles.
+ * 
+ * RESPONSE:
+ * {
+ *   fincas: [ { id, nombre, capacidad }, ... ],
+ *   total: 10
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
@@ -32,6 +62,15 @@ router.get('/', async (req, res) => {
 // ================================================
 // GET /api/fincas/:id - Obtener finca por ID
 // ================================================
+/**
+ * Obtiene los detalles de una finca específica.
+ * 
+ * PARAMS:
+ * - id: ID de la finca
+ * 
+ * RESPONSE:
+ * { finca: { id, nombre, capacidad } }
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

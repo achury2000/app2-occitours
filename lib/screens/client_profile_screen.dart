@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class ClientProfileScreen extends StatefulWidget {
   static const routeName = '/client/profile';
@@ -11,10 +12,10 @@ class ClientProfileScreen extends StatefulWidget {
 
 class _ClientProfileScreenState extends State<ClientProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
+  late TextEditingController _nombreController;
+  late TextEditingController _apellidoController;
+  late TextEditingController _cedulaController;
   late TextEditingController _emailController;
-  late TextEditingController _phoneController;
-  late TextEditingController _addressController;
 
   bool _isEditing = false;
 
@@ -24,42 +25,76 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final user = auth.user;
 
-    _nameController = TextEditingController(text: user?.name ?? '');
+    _nombreController = TextEditingController(text: user?.name ?? '');
+    _apellidoController = TextEditingController(text: user?.apellido ?? '');
+    _cedulaController = TextEditingController(text: user?.cedula ?? '');
     _emailController = TextEditingController(text: user?.email ?? '');
-    _phoneController = TextEditingController(text: user?.phone ?? '');
-    _addressController = TextEditingController(text: user?.address ?? '');
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _nombreController.dispose();
+    _apellidoController.dispose();
+    _cedulaController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    final apiService = ApiService();
 
-    // Actualizar datos del usuario localmente
-    auth.user?.name = _nameController.text;
-    auth.user?.email = _emailController.text;
-    auth.user?.phone = _phoneController.text;
-    auth.user?.address = _addressController.text;
-
-    setState(() {
-      _isEditing = false;
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Perfil actualizado exitosamente'),
-        backgroundColor: Colors.green,
-      ),
+    // Mostrar loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Center(child: CircularProgressIndicator()),
     );
+
+    try {
+      // Actualizar en el backend (tabla usuarios)
+      await apiService.updateUser(
+        auth.user!.id,
+        {
+          'nombre': _nombreController.text,
+          'apellido': _apellidoController.text,
+          'cedula': _cedulaController.text,
+          'email': _emailController.text,
+        },
+      );
+
+      // Actualizar datos del usuario localmente
+      auth.user?.name = _nombreController.text;
+      auth.user?.apellido = _apellidoController.text;
+      auth.user?.cedula = _cedulaController.text;
+      auth.user?.email = _emailController.text;
+
+      // Cerrar loading
+      Navigator.of(context).pop();
+
+      setState(() {
+        _isEditing = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('✅ Perfil actualizado en la base de datos'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      // Cerrar loading
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('❌ Error al actualizar: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -79,10 +114,10 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                 _isEditing = !_isEditing;
                 if (!_isEditing) {
                   // Restaurar valores originales si se cancela
-                  _nameController.text = user?.name ?? '';
+                  _nombreController.text = user?.name ?? '';
+                  _apellidoController.text = user?.apellido ?? '';
+                  _cedulaController.text = user?.cedula ?? '';
                   _emailController.text = user?.email ?? '';
-                  _phoneController.text = user?.phone ?? '';
-                  _addressController.text = user?.address ?? '';
                 }
               });
             },
@@ -167,12 +202,35 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
 
                     // Nombre
                     _buildTextField(
-                      controller: _nameController,
-                      label: 'Nombre Completo',
+                      controller: _nombreController,
+                      label: 'Nombre',
                       icon: Icons.person_outline,
                       enabled: _isEditing,
                       validator: (val) =>
                           val!.isEmpty ? 'Ingresa tu nombre' : null,
+                    ),
+                    SizedBox(height: 16),
+
+                    // Apellido
+                    _buildTextField(
+                      controller: _apellidoController,
+                      label: 'Apellido',
+                      icon: Icons.person_outline,
+                      enabled: _isEditing,
+                      validator: (val) =>
+                          val!.isEmpty ? 'Ingresa tu apellido' : null,
+                    ),
+                    SizedBox(height: 16),
+
+                    // Cédula
+                    _buildTextField(
+                      controller: _cedulaController,
+                      label: 'Cédula',
+                      icon: Icons.badge_outlined,
+                      enabled: _isEditing,
+                      keyboardType: TextInputType.number,
+                      validator: (val) =>
+                          val!.isEmpty ? 'Ingresa tu cédula' : null,
                     ),
                     SizedBox(height: 16),
 
@@ -188,26 +246,6 @@ class _ClientProfileScreenState extends State<ClientProfileScreen> {
                         if (!val.contains('@')) return 'Email inválido';
                         return null;
                       },
-                    ),
-                    SizedBox(height: 16),
-
-                    // Teléfono
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'Teléfono',
-                      icon: Icons.phone_outlined,
-                      enabled: _isEditing,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    SizedBox(height: 16),
-
-                    // Dirección
-                    _buildTextField(
-                      controller: _addressController,
-                      label: 'Dirección',
-                      icon: Icons.home_outlined,
-                      enabled: _isEditing,
-                      maxLines: 2,
                     ),
                     SizedBox(height: 24),
 

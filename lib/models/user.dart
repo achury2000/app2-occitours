@@ -1,6 +1,7 @@
 class User {
   final String id;
   String name;
+  String? apellido;
   String email;
   String role;
   String? cedula;
@@ -11,6 +12,7 @@ class User {
   User(
       {required this.id,
       required this.name,
+      this.apellido,
       required this.email,
       this.role = 'customer',
       this.cedula,

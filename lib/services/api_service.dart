@@ -1,26 +1,63 @@
+/**
+ * =============================================
+ * API_SERVICE.DART - CLIENTE HTTP PARA BACKEND
+ * =============================================
+ * 
+ * Servicio singleton que maneja todas las peticiones HTTP
+ * al backend de Occitours. Proporciona métodos para interactuar
+ * con todos los endpoints de la API REST.
+ * 
+ * CARACTERÍSTICAS:
+ * - Detección automática de plataforma (Android usa 10.0.2.2)
+ * - Gestión de autenticación JWT
+ * - Manejo centralizado de errores
+ * - Métodos para todos los recursos (fincas, rutas, reservas, ventas, etc.)
+ * 
+ * ARQUITECTURA:
+ * Cada método corresponde a un endpoint del backend y retorna
+ * un Map<String, dynamic> con la respuesta JSON parseada.
+ * 
+ * ERRORES:
+ * Los métodos lanzan excepciones (throw) cuando hay errores,
+ * que deben ser capturadas con try-catch en las pantallas.
+ * 
+ * USO:
+ * ```dart
+ * final apiService = ApiService();
+ * final fincas = await apiService.getFincas();
+ * ```
+ */
+
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  // URL base del backend - detecta automáticamente la plataforma
+  // =============================================
+  // CONFIGURACIÓN DE URL BASE
+  // =============================================
+  /// URL base del backend - detecta automáticamente la plataforma
+  /// - Android Emulator: usa 10.0.2.2 (mapea a localhost del host)
+  /// - iOS/Web/Otros: usa localhost directamente
   static String get baseUrl {
-    // En Android usa 10.0.2.2 (IP especial del emulador para localhost del host)
-    // En web/iOS/otros usa localhost
     if (Platform.isAndroid) {
       return 'http://10.0.2.2:3000/api';
     }
     return 'http://localhost:3000/api';
   }
 
+  // Token JWT para autenticación
   String? _token;
 
-  // Setter para el token JWT
+  // =============================================
+  // GESTIÓN DE AUTENTICACIÓN
+  // =============================================
+  /// Establece el token JWT para peticiones autenticadas
   void setToken(String? token) {
     _token = token;
   }
 
-  // Headers comunes
+  /// Genera headers HTTP con Content-Type y opcionalmente Authorization
   Map<String, String> _getHeaders({bool requiresAuth = false}) {
     final headers = {
       'Content-Type': 'application/json',
@@ -38,6 +75,10 @@ class ApiService {
   // ========================================
 
   /// POST /api/auth/login
+  /// Inicia sesión con email y contraseña
+  ///
+  /// Returns: { success: true, token: '...', user: {...} }
+  /// Throws: String con mensaje de error
   Future<Map<String, dynamic>> login(String email, String password) async {
     try {
       final response = await http.post(
@@ -52,18 +93,23 @@ class ApiService {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        // Login exitoso
+        // Login exitoso - retorna token y datos del usuario
         return data;
       } else {
-        // Error del servidor
+        // Error del servidor (401, 403, etc.)
         throw data['message'] ?? data['error'] ?? 'Error al iniciar sesión';
       }
     } catch (e) {
+      // Error de red o parsing
       throw 'Error de conexión: $e';
     }
   }
 
   /// POST /api/auth/register
+  /// Registra un nuevo usuario en el sistema
+  ///
+  /// Returns: { success: true, user: {...} }
+  /// Throws: String con mensaje de error
   Future<Map<String, dynamic>> register({
     required String nombre,
     required String apellido,
@@ -92,7 +138,7 @@ class ApiService {
         // Registro exitoso
         return data;
       } else {
-        // Error del servidor
+        // Error del servidor (400, 409, etc.)
         throw data['message'] ?? data['error'] ?? 'Error al registrar';
       }
     } catch (e) {
@@ -648,10 +694,15 @@ class ApiService {
   }
 
   // ========================================
-  // VENTAS
+  // VENTAS - Gestión de ventas y pagos
   // ========================================
+  // Las ventas agrupan múltiples reservas de un cliente
+  // y permiten gestionar pagos parciales (abonos).
 
   /// GET /api/ventas - Obtener todas las ventas
+  ///
+  /// Returns: Lista de ventas con cliente, asesor y número de reservas
+  /// [ { id, cliente_nombre, asesor_nombre, fecha, total, estado, num_reservas }, ... ]
   Future<List<dynamic>> getVentas() async {
     try {
       final response = await http.get(
@@ -672,6 +723,9 @@ class ApiService {
   }
 
   /// GET /api/ventas/:id - Obtener una venta por ID
+  ///
+  /// Returns: Objeto con venta, reservas asociadas y abonos realizados
+  /// { venta: {...}, reservas: [...], abonos: [...] }
   Future<Map<String, dynamic>> getVenta(String id) async {
     try {
       final response = await http.get(
@@ -692,6 +746,13 @@ class ApiService {
   }
 
   /// POST /api/ventas - Crear nueva venta
+  ///
+  /// Params:
+  /// - clienteId: ID del cliente (requerido)
+  /// - asesorId: ID del asesor (opcional)
+  /// - reservasIds: Lista de IDs de reservas a asociar (opcional)
+  ///
+  /// Returns: { success: true, venta: {...} }
   Future<Map<String, dynamic>> createVenta({
     required int clienteId,
     int? asesorId,
@@ -815,10 +876,18 @@ class ApiService {
   }
 
   // ========================================
-  // DASHBOARD
+  // DASHBOARD - Estadísticas y Analytics
   // ========================================
+  // Estos métodos obtienen datos agregados para mostrar
+  // en los dashboards de administración (gráficos, métricas, tops).
 
-  /// GET /api/dashboard/stats - Estadísticas generales
+  /// GET /api/dashboard/stats - Estadísticas generales del sistema
+  ///
+  /// Returns: {
+  ///   totales: { fincas, rutas, servicios, clientes, reservas, ventas },
+  ///   ingresos: { total_general, total_completado, total_confirmado, total_pendiente },
+  ///   reservas_por_estado: [ { estado, cantidad }, ... ]
+  /// }
   Future<Map<String, dynamic>> getDashboardStats() async {
     try {
       final response = await http.get(
@@ -840,7 +909,17 @@ class ApiService {
     }
   }
 
-  /// GET /api/dashboard/ingresos-mensuales - Ingresos por mes
+  /// GET /api/dashboard/ingresos-mensuales - Ingresos agrupados por mes
+  ///
+  /// Params:
+  /// - year: Año para filtrar (opcional, por defecto año actual)
+  ///
+  /// Returns: {
+  ///   year: 2025,
+  ///   data: [150000, 230000, ...] // Array de 12 posiciones (enero a diciembre)
+  /// }
+  ///
+  /// Uso: Para generar gráficos de barras mensuales
   Future<Map<String, dynamic>> getIngresosMensuales({int? year}) async {
     try {
       final queryParams = year != null ? '?year=$year' : '';
@@ -863,7 +942,12 @@ class ApiService {
     }
   }
 
-  /// GET /api/dashboard/top-fincas - Top 5 fincas
+  /// GET /api/dashboard/top-fincas - Top 5 fincas más reservadas
+  ///
+  /// Returns: [
+  ///   { nombre, total_reservas, ingresos_totales },
+  ///   ...
+  /// ]
   Future<List<dynamic>> getTopFincas() async {
     try {
       final response = await http.get(
@@ -883,7 +967,12 @@ class ApiService {
     }
   }
 
-  /// GET /api/dashboard/top-rutas - Top 5 rutas
+  /// GET /api/dashboard/top-rutas - Top 5 rutas más populares
+  ///
+  /// Returns: [
+  ///   { nombre, total_reservas, ingresos_totales },
+  ///   ...
+  /// ]
   Future<List<dynamic>> getTopRutas() async {
     try {
       final response = await http.get(

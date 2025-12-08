@@ -1,3 +1,26 @@
+/**
+ * =============================================
+ * SERVICIOS.JS - GESTIÓN DE SERVICIOS ADICIONALES
+ * =============================================
+ * 
+ * Maneja los servicios adicionales que se pueden agregar
+ * a las reservas (alimentación, transporte, guías, etc.).
+ * 
+ * ENDPOINTS:
+ * - GET  /          - Listar todos los servicios
+ * - GET  /:id       - Obtener detalles de un servicio
+ * 
+ * MODELO:
+ * Servicio { id, nombre, precio }
+ * 
+ * RELACIONES:
+ * - Los servicios se asocian a reservas mediante reserva_servicio
+ * - Una reserva puede tener múltiples servicios
+ * 
+ * USO:
+ * Al crear/editar reservas, se seleccionan servicios adicionales.
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -6,6 +29,15 @@ const router = express.Router();
 // ================================================
 // GET /api/servicios - Listar todos los servicios
 // ================================================
+/**
+ * Obtiene el catálogo completo de servicios adicionales.
+ * 
+ * RESPONSE:
+ * {
+ *   servicios: [ { id, nombre, precio }, ... ],
+ *   total: 8
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
@@ -32,6 +64,15 @@ router.get('/', async (req, res) => {
 // ================================================
 // GET /api/servicios/:id - Obtener servicio por ID
 // ================================================
+/**
+ * Obtiene los detalles de un servicio específico.
+ * 
+ * PARAMS:
+ * - id: ID del servicio
+ * 
+ * RESPONSE:
+ * { servicio: { id, nombre, precio } }
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

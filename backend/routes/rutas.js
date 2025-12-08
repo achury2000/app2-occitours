@@ -1,3 +1,23 @@
+/**
+ * =============================================
+ * RUTAS.JS - GESTIÓN DE RUTAS TURÍSTICAS
+ * =============================================
+ * 
+ * Maneja las operaciones CRUD para rutas turísticas.
+ * Las rutas son itinerarios de naturaleza y aventura
+ * con duración y actividades específicas.
+ * 
+ * ENDPOINTS:
+ * - GET  /          - Listar todas las rutas
+ * - GET  /:id       - Obtener detalles de una ruta
+ * 
+ * MODELO:
+ * Ruta { id, nombre, duracion_horas }
+ * 
+ * USO:
+ * Consumido por el catálogo de rutas en Flutter.
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -6,6 +26,15 @@ const router = express.Router();
 // ================================================
 // GET /api/rutas - Listar todas las rutas
 // ================================================
+/**
+ * Obtiene el listado completo de rutas turísticas.
+ * 
+ * RESPONSE:
+ * {
+ *   rutas: [ { id, nombre, duracion_horas }, ... ],
+ *   total: 15
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
@@ -32,6 +61,15 @@ router.get('/', async (req, res) => {
 // ================================================
 // GET /api/rutas/:id - Obtener ruta por ID
 // ================================================
+/**
+ * Obtiene los detalles de una ruta específica.
+ * 
+ * PARAMS:
+ * - id: ID de la ruta
+ * 
+ * RESPONSE:
+ * { ruta: { id, nombre, duracion_horas } }
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

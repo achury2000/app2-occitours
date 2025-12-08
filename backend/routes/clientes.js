@@ -1,3 +1,26 @@
+/**
+ * =============================================
+ * CLIENTES.JS - GESTIÓN DE CLIENTES
+ * =============================================
+ * 
+ * Maneja las operaciones relacionadas con los clientes
+ * que realizan reservas en el sistema.
+ * 
+ * ENDPOINTS:
+ * - GET  /                  - Listar todos los clientes
+ * - GET  /by-cedula/:cedula - Buscar cliente por cédula
+ * - GET  /:id               - Obtener detalles de un cliente
+ * - POST /                  - Crear nuevo cliente
+ * 
+ * MODELO:
+ * Cliente { id, nombre, cedula, email, telefono }
+ * 
+ * USO:
+ * - Al crear reservas, se busca/crea el cliente
+ * - Los clientes pueden tener múltiples reservas
+ * - Los clientes se asocian a ventas
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -6,6 +29,15 @@ const router = express.Router();
 // ================================================
 // GET /api/clientes - Listar todos los clientes
 // ================================================
+/**
+ * Obtiene el listado completo de clientes registrados.
+ * 
+ * RESPONSE:
+ * {
+ *   clientes: [ { id, nombre, cedula, email, telefono }, ... ],
+ *   total: 50
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
@@ -32,6 +64,20 @@ router.get('/', async (req, res) => {
 // ================================================
 // GET /api/clientes/by-cedula/:cedula - Obtener cliente por cédula
 // ================================================
+/**
+ * Busca un cliente específico por su número de cédula.
+ * Útil para verificar si un cliente ya existe antes de crear reserva.
+ * 
+ * PARAMS:
+ * - cedula: Número de cédula del cliente
+ * 
+ * RESPONSE:
+ * { cliente: { id, nombre, cedula, email, telefono } }
+ * 
+ * STATUS:
+ * - 200: Cliente encontrado
+ * - 404: Cliente no existe
+ */
 router.get('/by-cedula/:cedula', async (req, res) => {
   try {
     const { cedula } = req.params;

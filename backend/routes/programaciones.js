@@ -1,3 +1,28 @@
+/**
+ * =============================================
+ * PROGRAMACIONES.JS - PROGRAMACIÓN DE RUTAS
+ * =============================================
+ * 
+ * Maneja la programación de rutas turísticas,
+ * incluyendo fecha, hora y guía asignado.
+ * 
+ * ENDPOINTS:
+ * - GET  /          - Listar todas las programaciones
+ * - GET  /:id       - Obtener detalles de una programación
+ * 
+ * MODELO:
+ * Programacion { id, fecha, hora, guia_id }
+ * 
+ * RELACIONES:
+ * - Programacion pertenece a Empleado (guía)
+ * - Programacion tiene múltiples Rutas (via programacion_ruta)
+ * - Las reservas se vinculan a programaciones (via reserva_programacion)
+ * 
+ * USO:
+ * Permite organizar las salidas turísticas con guías
+ * y vincular reservas a fechas/horarios específicos.
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -6,6 +31,15 @@ const router = express.Router();
 // ================================================
 // GET /api/programaciones - Listar todas las programaciones
 // ================================================
+/**
+ * Obtiene el listado de programaciones con información del guía.
+ * 
+ * RESPONSE:
+ * {
+ *   programaciones: [ { id, fecha, hora, guia_nombre }, ... ],
+ *   total: 25
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(

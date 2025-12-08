@@ -1,3 +1,33 @@
+/**
+ * =============================================
+ * ROLES.JS - GESTIÓN DE ROLES Y PERMISOS
+ * =============================================
+ * 
+ * Maneja los roles de usuario del sistema (admin, asesor, cliente)
+ * y sus permisos asociados.
+ * 
+ * ENDPOINTS:
+ * - GET    /           - Listar todos los roles
+ * - GET    /:id        - Obtener rol con sus permisos
+ * - POST   /           - Crear nuevo rol
+ * - PUT    /:id        - Actualizar rol
+ * - DELETE /:id        - Eliminar rol
+ * - POST   /:id/permisos - Asignar permisos a un rol
+ * 
+ * MODELO:
+ * Rol { id, nombre }
+ * Permiso { id, nombre, descripcion }
+ * 
+ * ROLES DEL SISTEMA:
+ * - admin: Acceso total al sistema
+ * - asesor: Gestión de reservas y clientes
+ * - cliente: Visualización de catálogo y sus reservas
+ * 
+ * USO:
+ * Los roles determinan qué pantallas y acciones están
+ * disponibles para cada usuario en Flutter.
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -10,6 +40,15 @@ const router = express.Router();
 // ================================================
 // GET /api/roles - Listar todos los roles (público)
 // ================================================
+/**
+ * Obtiene el listado de roles disponibles en el sistema.
+ * 
+ * RESPONSE:
+ * {
+ *   roles: [ { id, nombre }, ... ],
+ *   total: 3
+ * }
+ */
 router.get('/', async (req, res) => {
   try {
     const result = await db.query(
@@ -36,6 +75,19 @@ router.get('/', async (req, res) => {
 // ================================================
 // GET /api/roles/:id - Obtener rol por ID con sus permisos (público)
 // ================================================
+/**
+ * Obtiene los detalles de un rol específico junto con
+ * todos los permisos asignados a ese rol.
+ * 
+ * PARAMS:
+ * - id: ID del rol
+ * 
+ * RESPONSE:
+ * {
+ *   rol: { id, nombre },
+ *   permisos: [ { id, nombre, descripcion }, ... ]
+ * }
+ */
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;

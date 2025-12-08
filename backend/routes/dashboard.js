@@ -1,3 +1,25 @@
+/**
+ * =============================================
+ * DASHBOARD.JS - ENDPOINTS DE ESTADÍSTICAS Y ANALYTICS
+ * =============================================
+ * 
+ * Proporciona endpoints para obtener estadísticas agregadas,
+ * métricas de negocio y datos para visualización en dashboards.
+ * 
+ * ENDPOINTS:
+ * - GET /stats                - Estadísticas generales del sistema
+ * - GET /ingresos-mensuales   - Ingresos agrupados por mes
+ * - GET /top-fincas           - Top 5 fincas más reservadas
+ * - GET /top-rutas            - Top 5 rutas más populares
+ * - GET /top-servicios        - Top 5 servicios más vendidos
+ * - GET /reservas-recientes   - Últimas 10 reservas
+ * 
+ * USO:
+ * Estos endpoints son consumidos por AdminDashboardScreen y
+ * AdminAnalyticsScreen en la aplicación Flutter para mostrar
+ * gráficos, tablas y métricas de negocio.
+ */
+
 const express = require('express');
 const db = require('../config/database');
 
@@ -10,9 +32,19 @@ const router = express.Router();
 // ================================================
 // GET /api/dashboard/stats - Estadísticas generales
 // ================================================
+/**
+ * Obtiene un resumen general de estadísticas del sistema.
+ * 
+ * RESPONSE:
+ * {
+ *   totales: { fincas, rutas, servicios, clientes, reservas, ventas },
+ *   ingresos: { total_general, total_completado, total_confirmado, total_pendiente },
+ *   reservas_por_estado: [ { estado, cantidad }, ... ]
+ * }
+ */
 router.get('/stats', async (req, res) => {
   try {
-    // Contar totales
+    // Contar totales de cada recurso
     const [fincas, rutas, servicios, clientes, reservas, ventas] = await Promise.all([
       db.query('SELECT COUNT(*) as total FROM fincas'),
       db.query('SELECT COUNT(*) as total FROM rutas'),
@@ -22,7 +54,7 @@ router.get('/stats', async (req, res) => {
       db.query('SELECT COUNT(*) as total FROM ventas'),
     ]);
 
-    // Calcular ingresos
+    // Calcular ingresos totales y por estado de reserva
     const ingresos = await db.query(`
       SELECT 
         SUM(precio_total) as total_general,
@@ -33,7 +65,7 @@ router.get('/stats', async (req, res) => {
       WHERE precio_total > 0
     `);
 
-    // Reservas por estado
+    // Contar reservas agrupadas por estado
     const reservasPorEstado = await db.query(`
       SELECT estado, COUNT(*) as cantidad
       FROM reservas
@@ -73,6 +105,21 @@ router.get('/stats', async (req, res) => {
 // ================================================
 // GET /api/dashboard/ingresos-mensuales - Ingresos por mes
 // ================================================
+/**
+ * Obtiene los ingresos totales agrupados por mes para un año específico.
+ * 
+ * QUERY PARAMS:
+ * - year (opcional): Año para filtrar (por defecto: año actual)
+ * 
+ * RESPONSE:
+ * {
+ *   year: 2025,
+ *   data: [1500000, 2300000, ...] // Array de 12 posiciones (enero a diciembre)
+ * }
+ * 
+ * USO:
+ * Utilizado para generar gráficos de barras mensuales en el dashboard.
+ */
 router.get('/ingresos-mensuales', async (req, res) => {
   try {
     const { year } = req.query;
