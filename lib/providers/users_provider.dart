@@ -1,3 +1,31 @@
+/**
+ * =============================================
+ * USERS_PROVIDER.DART - GESTIÓN DE USUARIOS
+ * =============================================
+ * 
+ * Provider que maneja la lista de usuarios del sistema,
+ * conectándose al backend para operaciones CRUD.
+ * 
+ * RESPONSABILIDADES:
+ * - Cargar usuarios desde el backend (GET /api/auth/users)
+ * - Actualizar roles de usuarios (PUT /api/auth/users/:id)
+ * - Eliminar usuarios (DELETE /api/auth/users/:id)
+ * - Mantener estado de carga y errores
+ * - Notificar cambios a la UI con ChangeNotifier
+ * 
+ * INTEGRACIÓN CON BACKEND:
+ * - Usa ApiService para todas las peticiones HTTP
+ * - Requiere token JWT para autenticación
+ * - Mapea roles del backend (admin, guia) al frontend
+ * 
+ * USO:
+ * ```dart
+ * final usersProvider = Provider.of<UsersProvider>(context);
+ * await usersProvider.loadUsersFromBackend();
+ * final users = usersProvider.users;
+ * ```
+ */
+
 // parte linsaith
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -5,38 +33,50 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 
+/// Provider de usuarios con integración al backend
 class UsersProvider with ChangeNotifier {
   static const _prefsKey = 'users_v1';
 
-  List<User> _users = [];
-  final List<Map<String, dynamic>> _audit = [];
-  final ApiService _apiService = ApiService();
-  bool _isLoading = false;
-  String? _error;
+  // ====== ESTADO PRIVADO ======
+  List<User> _users = []; // Lista de usuarios cargados
+  final List<Map<String, dynamic>> _audit =
+      []; // Registro de cambios (auditoría)
+  final ApiService _apiService = ApiService(); // Cliente HTTP para backend
+  bool _isLoading = false; // Estado de carga
+  String? _error; // Mensaje de error si falla algo
 
-  List<User> get users => List.unmodifiable(_users);
+  // ====== GETTERS PÚBLICOS ======
+  List<User> get users => List.unmodifiable(_users); // Lista inmutable para UI
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Constructor - Inicializa con lista vacía
   UsersProvider() {
-    // Inicializar con lista vacía para evitar errores
     _users = [];
   }
 
-  // Setter para el token de API
+  /// Configura el token JWT para peticiones autenticadas
+  /// Debe llamarse después del login exitoso
   void setToken(String? token) {
     _apiService.setToken(token);
   }
 
-  // Cargar usuarios desde el backend
+  /// Carga la lista de usuarios desde el backend
+  /// Endpoint: GET /api/auth/users
+  ///
+  /// Mapea los roles del backend al formato del frontend:
+  /// - 'admin'/'administrador' → 'admin'
+  /// - 'guia'/'guide' → 'guide'
+  /// - otros → 'customer'
   Future<void> loadUsersFromBackend() async {
     _isLoading = true;
     _error = null;
-    // No notificar inmediatamente para evitar errores durante el build
 
     try {
+      // Llamada HTTP al backend
       final usuariosData = await _apiService.getUsers();
 
+      // Transformar datos del backend a objetos User
       _users = usuariosData.map((data) {
         // Mapear roles del backend a los del frontend
         String roleFrontend = 'customer';
@@ -170,6 +210,13 @@ class UsersProvider with ChangeNotifier {
     }
   }
 
+  /// Actualiza el rol de un usuario en el backend
+  /// Endpoint: PUT /api/auth/users/:id
+  ///
+  /// Mapea roles del frontend al ID de rol del backend:
+  /// - 'admin' → rol_id: 1
+  /// - 'guide' → rol_id: 3
+  /// - 'customer' → rol_id: 2
   Future<void> updateRole(String id, String role) async {
     try {
       // Mapear rol del frontend al backend
@@ -182,15 +229,16 @@ class UsersProvider with ChangeNotifier {
         rolId = 2; // cliente
       }
 
+      // Llamada HTTP al backend
       await _apiService.updateUser(id, {'rol_id': rolId});
 
-      // Actualizar localmente
+      // Actualizar localmente si la petición fue exitosa
       final idx = _users.indexWhere((u) => u.id == id);
       if (idx >= 0) {
         _users[idx].role = role;
         await _save();
 
-        // Persistir cambio por usuario
+        // Persistir cambio en SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userRole_' + id, role);
         notifyListeners();
@@ -201,17 +249,25 @@ class UsersProvider with ChangeNotifier {
     } catch (e) {
       _error = e.toString();
       notifyListeners();
-      rethrow;
+      rethrow; // Relanzar error para que la UI pueda manejarlo
     }
   }
 
+  /// Elimina un usuario del sistema
+  /// Endpoint: DELETE /api/auth/users/:id
+  ///
+  /// También registra la acción en el log de auditoría
+  /// y recarga la lista desde el backend para sincronizar
   Future<void> deleteUserWithAudit(String id,
       {Map<String, String>? actor}) async {
     try {
+      // Llamada HTTP al backend
       await _apiService.deleteUser(id);
 
-      // Actualizar localmente
+      // Actualizar lista local
       _users.removeWhere((u) => u.id == id);
+
+      // Registrar en auditoría
       _audit.insert(0, {
         'action': 'delete_user',
         'userId': id,
@@ -223,7 +279,7 @@ class UsersProvider with ChangeNotifier {
       await _saveAudit();
       notifyListeners();
 
-      // Recargar desde backend
+      // Recargar desde backend para confirmar eliminación
       await loadUsersFromBackend();
     } catch (e) {
       _error = e.toString();
